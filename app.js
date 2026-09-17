@@ -123,6 +123,26 @@
     el.innerHTML = html;
   }
 
+  /* Renders the hard/recovery effort strip used across the session tools.
+     segments: [{cls:'hard'|'float', dur}] in order — widths are proportional
+     to duration. groups (optional): [{label, dur}] for a label row beneath,
+     e.g. one label per rung/phase spanning its segments' combined width. */
+  function renderStrip(stripEl, groupsEl, segments, groups) {
+    if (!stripEl) return;
+    var total = segments.reduce(function (a, s) { return a + s.dur; }, 0);
+    stripEl.innerHTML = total > 0
+      ? segments.map(function (s) {
+          return '<div class="strip-seg ' + s.cls + '" style="width:' + (s.dur / total) * 100 + '%"></div>';
+        }).join("")
+      : "";
+    if (!groupsEl) return;
+    groupsEl.innerHTML = total > 0 && groups
+      ? groups.map(function (g) {
+          return '<div class="strip-phase-label" style="width:' + (g.dur / total) * 100 + '%">' + g.label + "</div>";
+        }).join("")
+      : "";
+  }
+
   function setError(elId, msg) {
     var el = document.getElementById(elId);
     if (!el) return;
@@ -285,6 +305,7 @@
     var groupTheadRow = document.getElementById("iv-group-thead-row");
     var groupTableBody = document.querySelector("#iv-group-table tbody");
     var garminStepsEl = document.getElementById("iv-garmin-steps");
+    var stripEl = document.getElementById("iv-strip");
 
     var recoveryField = createPaceField(recoveryPaceInput);
     var repPaceField = createPaceField(repPaceInput);
@@ -474,6 +495,7 @@
         groupTableBody.innerHTML = "";
         groupSummary.textContent = "";
         garminStepsEl.innerHTML = "";
+        stripEl.innerHTML = "";
         return;
       }
 
@@ -490,6 +512,7 @@
         groupTableBody.innerHTML = "";
         groupSummary.textContent = "";
         garminStepsEl.innerHTML = "";
+        stripEl.innerHTML = "";
         return;
       }
 
@@ -525,6 +548,17 @@
         gearBreakdownWrap.hidden = true;
         gearBreakdownBody.innerHTML = "";
       }
+
+      var stripSegments = [];
+      for (var gi = 0; gi < reps; gi++) {
+        if (repMode === "gear") {
+          gearList.forEach(function (g) { stripSegments.push({ cls: "hard", dur: g.time }); });
+        } else {
+          stripSegments.push({ cls: "hard", dur: repTimeSec });
+        }
+        if (gi < reps - 1) stripSegments.push({ cls: "float", dur: recoverySec });
+      }
+      renderStrip(stripEl, null, stripSegments);
 
       var rows = "";
       for (var s = 1; s <= sets; s++) {
@@ -894,6 +928,7 @@
     var groupThMetric = document.getElementById("df-group-th-metric");
     var groupThTotal = document.getElementById("df-group-th-total");
     var garminStepsEl = document.getElementById("df-garmin-steps");
+    var stripEl = document.getElementById("df-strip");
 
     var hardPaceField = createPaceField(hardPaceInput);
     var floatPaceField = createPaceField(floatPaceInput);
@@ -957,6 +992,7 @@
         groupTableBody.innerHTML = "";
         groupSummary.textContent = "";
         garminStepsEl.innerHTML = "";
+        stripEl.innerHTML = "";
         return;
       }
 
@@ -1008,6 +1044,13 @@
         "<td>" + formatDuration(totalTime, totalTime >= 3600) + "</td>" +
         "<td>" + formatDistance(totalDist) + "</td></tr>";
       outTableBody.innerHTML = rows;
+
+      var stripSegments = [];
+      for (var fi = 0; fi < reps; fi++) {
+        stripSegments.push({ cls: "hard", dur: hardTimePerRep });
+        if (floatTimePerRep > 0) stripSegments.push({ cls: "float", dur: floatTimePerRep });
+      }
+      renderStrip(stripEl, null, stripSegments);
 
       var hasFloat = floatLen > 0;
       if (dfMode === "distance") {
@@ -1125,6 +1168,8 @@
     var groupTheadRow = document.getElementById("lad-group-thead-row");
     var groupTableBody = document.querySelector("#lad-group-table tbody");
     var garminStepsEl = document.getElementById("lad-garmin-steps");
+    var stripEl = document.getElementById("lad-strip");
+    var stripPhasesEl = document.getElementById("lad-strip-phases");
 
     var paceRows = [];
 
@@ -1223,11 +1268,15 @@
         groupTableBody.innerHTML = "";
         groupSummary.textContent = "";
         garminStepsEl.innerHTML = "";
+        stripEl.innerHTML = "";
+        stripPhasesEl.innerHTML = "";
         return;
       }
 
       var cumDist = 0, cumTime = 0;
       var rows = "";
+      var stripSegments = [];
+      var stripGroups = [];
       raw.forEach(function (dist, i) {
         var paceKm = paceRows[i].field.secPerKm;
         var repTime = paceKm * (dist / 1000);
@@ -1243,8 +1292,16 @@
           "<td>" + (isLast ? "—" : formatDuration(recovery)) + "</td>" +
           "<td>" + formatDistance(cumDist) + "</td>" +
           "<td>" + formatDuration(cumTime, cumTime >= 3600) + "</td></tr>";
+        stripSegments.push({ cls: "hard", dur: repTime });
+        var groupDur = repTime;
+        if (!isLast) {
+          stripSegments.push({ cls: "float", dur: recovery });
+          groupDur += recovery;
+        }
+        stripGroups.push({ label: formatDistance(dist), dur: groupDur });
       });
       outTableBody.innerHTML = rows;
+      renderStrip(stripEl, stripPhasesEl, stripSegments, stripGroups);
       outTotalDist.textContent = formatDistance(cumDist);
       outRungs.textContent = String(raw.length);
       outTotalTime.textContent = formatDuration(cumTime, cumTime >= 3600);

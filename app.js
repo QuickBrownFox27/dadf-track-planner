@@ -447,12 +447,18 @@
       });
       groupTableBody.innerHTML = groupRows;
 
+      var recoveryTarget = recoveryField.secPerKm ? garminPaceRange(recoveryField.secPerKm) : null;
+      var recoveryDetail =
+        recMode === "cycle"
+          ? "Lap Button Press — rest until the caller says go (≈ " + formatDuration(recoverySec) + ")" +
+            (recoveryTarget ? " · Target Pace " + recoveryTarget : " · Open (no target)")
+          : garminDetail("Time", formatDuration(recoverySec), recoveryTarget);
       var garminBlocks = [
         {
           repeat: reps,
           steps: [
             { label: "Interval", detail: garminDetail("Distance", formatDistance(distance), garminPaceRange(paceKm)) },
-            { label: "Recovery", detail: garminDetail("Time", formatDuration(recoverySec), recoveryField.secPerKm ? garminPaceRange(recoveryField.secPerKm) : null) },
+            { label: "Recovery", detail: recoveryDetail },
           ],
         },
       ];

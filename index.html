@@ -35,6 +35,7 @@
     <button class="tab" role="tab" id="tab-btn-distfartlek" aria-controls="panel-distfartlek" aria-selected="false" data-tab="distfartlek">Fartlek Builder</button>
   </nav>
 
+  <div class="page-layout">
   <main>
 
     <!-- ============ INTERVALS & RECOVERY ============ -->
@@ -511,6 +512,75 @@
     </section>
 
   </main>
+
+  <aside class="sidebar">
+    <div class="card goal-card">
+      <h2>Goal Race Times</h2>
+      <p class="hint">Enter whichever you&rsquo;ve got &mdash; more races in gives a steadier average. We&rsquo;ll suggest training paces for the effort types used across these calculators.</p>
+      <div class="field-group">
+        <div class="field">
+          <label for="goal-5k">5K</label>
+          <input type="text" id="goal-5k" inputmode="numeric" placeholder="m:ss" />
+        </div>
+        <div class="field">
+          <label for="goal-10k">10K</label>
+          <input type="text" id="goal-10k" inputmode="numeric" placeholder="m:ss" />
+        </div>
+        <div class="field">
+          <label for="goal-half">Half Marathon</label>
+          <input type="text" id="goal-half" inputmode="numeric" placeholder="h:mm:ss" />
+        </div>
+        <div class="field">
+          <label for="goal-full">Full Marathon</label>
+          <input type="text" id="goal-full" inputmode="numeric" placeholder="h:mm:ss" />
+        </div>
+      </div>
+    </div>
+
+    <div class="scoreboard goal-paces" id="goal-paces-panel">
+      <p class="scoreboard-head">Suggested training paces</p>
+      <p class="goal-empty" id="goal-empty-msg">Enter at least one goal time above.</p>
+      <div class="pace-tile-grid" id="goal-pace-grid" hidden>
+        <div class="pace-tile">
+          <p class="stat-label">Easy</p>
+          <p class="stat-value" id="goal-pace-easy">&mdash;</p>
+          <p class="stat-sub" id="goal-pace-easy-mi"></p>
+          <p class="pace-tile-use">Recovery jogs, float &amp; long runs</p>
+          <button type="button" class="copy-btn" data-copy="goal-pace-easy">Copy</button>
+        </div>
+        <div class="pace-tile">
+          <p class="stat-label">Marathon</p>
+          <p class="stat-value" id="goal-pace-marathon">&mdash;</p>
+          <p class="stat-sub" id="goal-pace-marathon-mi"></p>
+          <p class="pace-tile-use">Steady efforts, marathon-pace reps</p>
+          <button type="button" class="copy-btn" data-copy="goal-pace-marathon">Copy</button>
+        </div>
+        <div class="pace-tile">
+          <p class="stat-label">Threshold</p>
+          <p class="stat-value" id="goal-pace-threshold">&mdash;</p>
+          <p class="stat-sub" id="goal-pace-threshold-mi"></p>
+          <p class="pace-tile-use">Tempo runs, longer reps (Ladder, Mona 90s/60s)</p>
+          <button type="button" class="copy-btn" data-copy="goal-pace-threshold">Copy</button>
+        </div>
+        <div class="pace-tile">
+          <p class="stat-label">Interval</p>
+          <p class="stat-value" id="goal-pace-interval">&mdash;</p>
+          <p class="stat-sub" id="goal-pace-interval-mi"></p>
+          <p class="pace-tile-use">800&ndash;1600m reps, Mona 30s hard</p>
+          <button type="button" class="copy-btn" data-copy="goal-pace-interval">Copy</button>
+        </div>
+        <div class="pace-tile">
+          <p class="stat-label">Repetition</p>
+          <p class="stat-value" id="goal-pace-repetition">&mdash;</p>
+          <p class="stat-sub" id="goal-pace-repetition-mi"></p>
+          <p class="pace-tile-use">200&ndash;400m reps, Mona 15s hard, Deek&rsquo;s Quarters</p>
+          <button type="button" class="copy-btn" data-copy="goal-pace-repetition">Copy</button>
+        </div>
+      </div>
+      <p class="note">Approximate paces from the VDOT method (Daniels &amp; Gilbert) &mdash; the same science behind the Daniels&rsquo; Running Formula tables. Averaged across whichever goal times you enter; treat as a starting point, not gospel.</p>
+    </div>
+  </aside>
+  </div>
 
   <footer class="site-footer">
     <span>De Agony of De Feet &middot; track session planner</span>

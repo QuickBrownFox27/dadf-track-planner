@@ -53,6 +53,43 @@
     return trimZeros((m / 1000).toFixed(2)) + " km";
   }
 
+  /* ---------------- VDOT training-pace helpers (Daniels & Gilbert) ---------------- */
+
+  function vo2FromVelocity(v) {
+    // v in metres/minute
+    return -4.6 + 0.182258 * v + 0.000104 * v * v;
+  }
+
+  function velocityFromVO2(vo2) {
+    // invert 0.000104 v^2 + 0.182258 v - (4.6 + vo2) = 0
+    var a = 0.000104, b = 0.182258, c = -(4.6 + vo2);
+    return (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+  }
+
+  function percentVO2maxFromDuration(tMin) {
+    return 0.8 + 0.1894393 * Math.exp(-0.012778 * tMin) + 0.2989558 * Math.exp(-0.1932605 * tMin);
+  }
+
+  function vdotFromPerformance(distanceM, timeSec) {
+    var tMin = timeSec / 60;
+    var v = distanceM / tMin;
+    return vo2FromVelocity(v) / percentVO2maxFromDuration(tMin);
+  }
+
+  function paceFromVdotAndPercent(vdot, pct) {
+    var v = velocityFromVO2(vdot * pct);
+    return 60000 / v; // sec/km
+  }
+
+  /* Midpoints of Daniels' published %VO2max ranges for each training zone. */
+  var VDOT_ZONES = [
+    { key: "easy", pct: 0.665 },
+    { key: "marathon", pct: 0.795 },
+    { key: "threshold", pct: 0.855 },
+    { key: "interval", pct: 0.975 },
+    { key: "repetition", pct: 1.10 },
+  ];
+
   /* ---------------- Garmin Connect step-builder helpers ---------------- */
 
   var GARMIN_PACE_TOLERANCE = 5; // seconds/km either side of target — a workable range to type into Garmin
@@ -148,6 +185,7 @@
     "mf-hardpace-90", "mf-hardpace-60", "mf-hardpace-30", "mf-hardpace-15", "mf-floatpace", "mf-sets", "mf-setrest",
     "df-harddist", "df-floatdist", "df-harddur", "df-floatdur", "df-reps", "df-hardpace", "df-floatpace",
     "lad-distances", "lad-paces-data", "lad-recmode", "lad-ratio", "lad-fixed",
+    "goal-5k", "goal-10k", "goal-half", "goal-full",
   ];
 
   function restoreState() {
@@ -1097,6 +1135,92 @@
 
     updateRecoveryModeUI();
     syncPresetPressed();
+    recalc();
+  })();
+
+  /* ============================================================
+     GOAL RACE TIMES  →  suggested training paces (VDOT method)
+     ============================================================ */
+
+  (function goalTimesTool() {
+    var RACES = [
+      { id: "goal-5k", distance: 5000 },
+      { id: "goal-10k", distance: 10000 },
+      { id: "goal-half", distance: 21097.5 },
+      { id: "goal-full", distance: 42195 },
+    ];
+
+    var emptyMsg = document.getElementById("goal-empty-msg");
+    var paceGrid = document.getElementById("goal-pace-grid");
+
+    function recalc() {
+      var vdots = [];
+      RACES.forEach(function (r) {
+        var input = document.getElementById(r.id);
+        var raw = input.value.trim();
+        if (raw === "") {
+          markValid(input, true);
+          return;
+        }
+        var t = parseTime(raw);
+        if (t == null || t <= 0) {
+          markValid(input, false);
+          return;
+        }
+        markValid(input, true);
+        vdots.push(vdotFromPerformance(r.distance, t));
+      });
+
+      if (vdots.length === 0) {
+        emptyMsg.hidden = false;
+        paceGrid.hidden = true;
+        return;
+      }
+
+      var vdot = vdots.reduce(function (a, b) { return a + b; }, 0) / vdots.length;
+      emptyMsg.hidden = true;
+      paceGrid.hidden = false;
+
+      VDOT_ZONES.forEach(function (z) {
+        var secPerKm = paceFromVdotAndPercent(vdot, z.pct);
+        var secPerMi = secPerKm * MI_PER_KM;
+        var kmEl = document.getElementById("goal-pace-" + z.key);
+        var miEl = document.getElementById("goal-pace-" + z.key + "-mi");
+        if (kmEl) kmEl.textContent = formatDuration(secPerKm) + " /km";
+        if (miEl) miEl.textContent = formatDuration(secPerMi) + " /mi";
+      });
+    }
+
+    RACES.forEach(function (r) {
+      var input = document.getElementById(r.id);
+      input.addEventListener("input", function () {
+        recalc();
+        saveState();
+      });
+    });
+
+    Array.prototype.slice.call(document.querySelectorAll(".copy-btn[data-copy]")).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var el = document.getElementById(btn.dataset.copy);
+        var text = el ? el.textContent.replace(/\s*\/(km|mi)$/, "") : "";
+        if (!text || text === "—") return;
+        var restoreLabel = "Copy";
+        function flash() {
+          btn.textContent = "Copied";
+          btn.classList.add("copied");
+          setTimeout(function () {
+            btn.textContent = restoreLabel;
+            btn.classList.remove("copied");
+          }, 1200);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(flash, flash);
+        } else {
+          flash();
+        }
+      });
+    });
+
     recalc();
   })();
 

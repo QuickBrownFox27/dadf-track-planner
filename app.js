@@ -53,6 +53,40 @@
     return trimZeros((m / 1000).toFixed(2)) + " km";
   }
 
+  /* ---------------- Garmin Connect step-builder helpers ---------------- */
+
+  var GARMIN_PACE_TOLERANCE = 5; // seconds/km either side of target — a workable range to type into Garmin
+
+  function garminPaceRange(secPerKm) {
+    if (secPerKm == null || !isFinite(secPerKm) || secPerKm <= 0) return null;
+    var slow = secPerKm + GARMIN_PACE_TOLERANCE;
+    var fast = Math.max(10, secPerKm - GARMIN_PACE_TOLERANCE);
+    return formatDuration(slow) + "–" + formatDuration(fast) + " /km";
+  }
+
+  function garminDetail(durationLabel, durationValue, paceRange) {
+    var s = durationLabel + " " + durationValue;
+    s += paceRange ? " · Target Pace " + paceRange : " · Open (no target)";
+    return s;
+  }
+
+  function renderGarminSteps(el, blocks) {
+    if (!el) return;
+    var html = "";
+    blocks.forEach(function (b) {
+      if (b.repeat) {
+        html += '<li><span class="g-label">Repeat ' + b.repeat + "×</span>" + '<ol class="g-repeat-group">';
+        b.steps.forEach(function (s) {
+          html += '<li><span class="g-label">' + s.label + '</span><span class="g-val">' + s.detail + "</span></li>";
+        });
+        html += "</ol></li>";
+      } else {
+        html += '<li><span class="g-label">' + b.label + '</span><span class="g-val">' + b.detail + "</span></li>";
+      }
+    });
+    el.innerHTML = html;
+  }
+
   function setError(elId, msg) {
     var el = document.getElementById(elId);
     if (!el) return;
@@ -211,6 +245,7 @@
     var outTableBody = document.querySelector("#iv-out-table tbody");
     var groupSummary = document.getElementById("iv-group-summary");
     var groupTableBody = document.querySelector("#iv-group-table tbody");
+    var garminStepsEl = document.getElementById("iv-garmin-steps");
 
     var recoveryField = createPaceField(recoveryPaceInput);
     var repPaceField = createPaceField(repPaceInput);
@@ -283,6 +318,7 @@
         repPaceEquiv.textContent = "";
         groupTableBody.innerHTML = "";
         groupSummary.textContent = "";
+        garminStepsEl.innerHTML = "";
         return;
       }
 
@@ -299,6 +335,7 @@
         outTableBody.innerHTML = "";
         groupTableBody.innerHTML = "";
         groupSummary.textContent = "";
+        garminStepsEl.innerHTML = "";
         return;
       }
 
@@ -371,6 +408,21 @@
           "<td>" + formatDuration(tierCycle) + "</td></tr>";
       });
       groupTableBody.innerHTML = groupRows;
+
+      var garminBlocks = [
+        {
+          repeat: reps,
+          steps: [
+            { label: "Interval", detail: garminDetail("Distance", formatDistance(distance), garminPaceRange(paceKm)) },
+            { label: "Recovery", detail: garminDetail("Time", formatDuration(recoverySec), recoveryField.secPerKm ? garminPaceRange(recoveryField.secPerKm) : null) },
+          ],
+        },
+      ];
+      if (sets > 1) {
+        garminBlocks.push({ label: "Rest between sets", detail: garminDetail("Time", formatDuration(setRestSec), null) });
+        garminBlocks.push({ label: "Then repeat", detail: "Wrap everything above in one more Repeat, set to " + sets + "× total." });
+      }
+      renderGarminSteps(garminStepsEl, garminBlocks);
     }
 
     distanceSel.addEventListener("change", function () {
@@ -439,6 +491,7 @@
     var outTableBody = document.querySelector("#mf-out-table tbody");
     var groupSummary = document.getElementById("mf-group-summary");
     var groupTableBody = document.querySelector("#mf-group-table tbody");
+    var garminStepsEl = document.getElementById("mf-garmin-steps");
 
     var hardFields = {};
     PHASES.forEach(function (p) {
@@ -481,6 +534,7 @@
         outTableBody.innerHTML = "";
         groupTableBody.innerHTML = "";
         groupSummary.textContent = "";
+        garminStepsEl.innerHTML = "";
         return;
       }
 
@@ -556,6 +610,21 @@
           "<td>" + formatDistance(tierSetDist * sets_) + "</td></tr>";
       });
       groupTableBody.innerHTML = groupRows;
+
+      var garminBlocks = PHASES.map(function (p) {
+        return {
+          repeat: p.reps,
+          steps: [
+            { label: "Hard " + p.label, detail: garminDetail("Time", formatDuration(p.dur), garminPaceRange(hardFields[p.key].secPerKm)) },
+            { label: "Float", detail: garminDetail("Time", formatDuration(p.dur), garminPaceRange(floatField.secPerKm)) },
+          ],
+        };
+      });
+      if (sets > 1) {
+        garminBlocks.push({ label: "Rest between sets", detail: garminDetail("Time", formatDuration(setRestSec), null) });
+        garminBlocks.push({ label: "Then repeat", detail: "Wrap everything above in one more Repeat, set to " + sets + "× total." });
+      }
+      renderGarminSteps(garminStepsEl, garminBlocks);
     }
 
     floatInput.addEventListener("input", function () { recalc(); saveState(); });
@@ -596,6 +665,7 @@
     var groupTableBody = document.querySelector("#df-group-table tbody");
     var groupThMetric = document.getElementById("df-group-th-metric");
     var groupThTotal = document.getElementById("df-group-th-total");
+    var garminStepsEl = document.getElementById("df-garmin-steps");
 
     var hardPaceField = createPaceField(hardPaceInput);
     var floatPaceField = createPaceField(floatPaceInput);
@@ -658,6 +728,7 @@
         outTableBody.innerHTML = "";
         groupTableBody.innerHTML = "";
         groupSummary.textContent = "";
+        garminStepsEl.innerHTML = "";
         return;
       }
 
@@ -749,6 +820,17 @@
           "<td>" + tierTotal + "</td></tr>";
       });
       groupTableBody.innerHTML = groupRows;
+
+      var hardDurationLabel = dfMode === "distance" ? "Distance" : "Time";
+      var hardDurationValue = dfMode === "distance" ? formatDistance(hardDist) : formatDuration(hardTimePerRep);
+      var floatDurationValue = dfMode === "distance" ? formatDistance(floatDist) : formatDuration(floatTimePerRep);
+      var garminSteps = [
+        { label: "Hard", detail: garminDetail(hardDurationLabel, hardDurationValue, garminPaceRange(hardPaceField.secPerKm)) },
+      ];
+      if (hasFloat) {
+        garminSteps.push({ label: "Recovery", detail: garminDetail(hardDurationLabel, floatDurationValue, garminPaceRange(floatPaceField.secPerKm)) });
+      }
+      renderGarminSteps(garminStepsEl, [{ repeat: reps, steps: garminSteps }]);
     }
 
     modeBtns.forEach(function (btn) {
@@ -816,6 +898,7 @@
     var groupSummary = document.getElementById("lad-group-summary");
     var groupTheadRow = document.getElementById("lad-group-thead-row");
     var groupTableBody = document.querySelector("#lad-group-table tbody");
+    var garminStepsEl = document.getElementById("lad-garmin-steps");
 
     var paceRows = [];
 
@@ -916,6 +999,7 @@
         outTableBody.innerHTML = "";
         groupTableBody.innerHTML = "";
         groupSummary.textContent = "";
+        garminStepsEl.innerHTML = "";
         return;
       }
 
@@ -971,6 +1055,19 @@
           "<td>" + formatDuration(tCum, tCum >= 3600) + "</td></tr>";
       });
       groupTableBody.innerHTML = groupRows;
+
+      var garminBlocks = [];
+      raw.forEach(function (dist, i) {
+        var paceKm = paceRows[i].field.secPerKm;
+        var repTime = paceKm * (dist / 1000);
+        garminBlocks.push({ label: "Rung " + (i + 1), detail: garminDetail("Distance", formatDistance(dist), garminPaceRange(paceKm)) });
+        var isLast = i === raw.length - 1;
+        if (!isLast) {
+          var recovery = recMode === "fixed" ? fixedRec : ratio * repTime;
+          garminBlocks.push({ label: "Recovery", detail: garminDetail("Time", formatDuration(recovery), null) });
+        }
+      });
+      renderGarminSteps(garminStepsEl, garminBlocks);
     }
 
     presetBtns.forEach(function (btn) {

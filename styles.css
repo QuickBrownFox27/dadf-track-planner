@@ -567,6 +567,57 @@ input.invalid {
   font-size: 0.74rem;
 }
 
+.garmin-note {
+  margin: 0 0 10px;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--scoreboard-fg-dim);
+}
+
+.garmin-steps {
+  margin: 0;
+  padding-left: 1.4em;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.garmin-steps li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.garmin-steps li::marker {
+  font-family: var(--font-mono);
+  color: var(--scoreboard-fg-dim);
+}
+
+.garmin-steps .g-label {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--scoreboard-fg-dim);
+}
+
+.garmin-steps .g-val {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.86rem;
+  color: var(--scoreboard-fg);
+}
+
+.garmin-steps .g-repeat-group {
+  margin: 4px 0 0;
+  padding: 8px 0 2px 1em;
+  border-left: 2px solid var(--scoreboard-line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 table.data tr.tier-invalid td {
   color: var(--scoreboard-fg-dim);
 }

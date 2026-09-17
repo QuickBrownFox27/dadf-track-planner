@@ -174,6 +174,9 @@
     "df-harddist", "df-floatdist", "df-harddur", "df-floatdur", "df-reps", "df-hardpace", "df-floatpace",
     "lad-distances", "lad-paces-data", "lad-recmode", "lad-ratio", "lad-fixed",
     "goal-5k", "goal-10k", "goal-half", "goal-full",
+    "pc-distance", "pc-distance-custom", "pc-time", "pc-pace",
+    "rp-distance", "rp-distance-custom", "rp-time",
+    "sp-distance", "sp-distance-custom", "sp-time", "sp-splitdist", "sp-splitdist-custom",
   ];
 
   function restoreState() {
@@ -1400,6 +1403,301 @@
       });
     });
 
+    recalc();
+  })();
+
+  /* ============================================================
+     PACE CALCULATOR  (any two of distance/time/pace -> the third)
+     ============================================================ */
+
+  (function paceCalcTool() {
+    var solveBtns = Array.prototype.slice.call(document.querySelectorAll('#pc-solve-mode button[data-solve]'));
+    var distanceWrap = document.getElementById("pc-distance-wrap");
+    var distanceSel = document.getElementById("pc-distance");
+    var distanceCustomWrap = document.getElementById("pc-distance-custom-wrap");
+    var distanceCustom = document.getElementById("pc-distance-custom");
+    var timeWrap = document.getElementById("pc-time-wrap");
+    var timeInput = document.getElementById("pc-time");
+    var paceWrap = document.getElementById("pc-pace-wrap");
+    var paceInput = document.getElementById("pc-pace");
+
+    var tileDistance = document.getElementById("pc-tile-distance");
+    var tileTime = document.getElementById("pc-tile-time");
+    var tilePace = document.getElementById("pc-tile-pace");
+    var outDistance = document.getElementById("pc-out-distance");
+    var outTime = document.getElementById("pc-out-time");
+    var outPace = document.getElementById("pc-out-pace");
+    var outLaps = document.getElementById("pc-out-laps");
+
+    var paceField = createPaceField(paceInput);
+    var solveMode = "time";
+
+    function currentDistance() {
+      if (distanceSel.value === "custom") {
+        var v = parseFloat(distanceCustom.value);
+        return v > 0 ? v : null;
+      }
+      return parseFloat(distanceSel.value);
+    }
+
+    function updateDistanceUI() {
+      distanceCustomWrap.hidden = distanceSel.value !== "custom";
+    }
+
+    function updateModeUI() {
+      distanceWrap.hidden = solveMode === "distance";
+      timeWrap.hidden = solveMode === "time";
+      paceWrap.hidden = solveMode === "pace";
+      solveBtns.forEach(function (b) {
+        b.setAttribute("aria-pressed", b.dataset.solve === solveMode ? "true" : "false");
+      });
+      [tileDistance, tileTime, tilePace].forEach(function (t) { t.classList.remove("primary"); });
+      (solveMode === "distance" ? tileDistance : solveMode === "time" ? tileTime : tilePace).classList.add("primary");
+    }
+
+    function clearOutputs() {
+      outDistance.textContent = "—";
+      outTime.textContent = "—";
+      outPace.textContent = "—";
+      outLaps.textContent = "—";
+    }
+
+    function recalc() {
+      setError("pc-error", "");
+
+      var distance = solveMode === "distance" ? null : currentDistance();
+      if (solveMode !== "distance") markValid(distanceCustom, distanceSel.value !== "custom" || distance != null);
+
+      var timeSec = solveMode === "time" ? null : parseTime(timeInput.value);
+      if (solveMode !== "time") markValid(timeInput, timeSec != null && timeSec > 0);
+
+      var paceOk = solveMode === "pace" ? true : paceField.sync(false);
+      var paceSecPerKm = paceField.secPerKm;
+
+      if (solveMode === "time") {
+        if (!(distance > 0) || !paceOk || paceSecPerKm == null) { clearOutputs(); return; }
+        var timeResult = paceSecPerKm * (distance / 1000);
+        outTime.textContent = formatDuration(timeResult, timeResult >= 3600);
+        outDistance.textContent = formatDistance(distance);
+        outPace.textContent = formatDuration(paceSecPerKm);
+        outLaps.textContent = trimZeros((distance / 400).toFixed(2)) + " laps";
+      } else if (solveMode === "pace") {
+        if (!(distance > 0) || timeSec == null) { clearOutputs(); return; }
+        var paceResult = timeSec / (distance / 1000);
+        outPace.textContent = formatDuration(paceResult);
+        outDistance.textContent = formatDistance(distance);
+        outTime.textContent = formatDuration(timeSec, timeSec >= 3600);
+        outLaps.textContent = trimZeros((distance / 400).toFixed(2)) + " laps";
+      } else {
+        if (timeSec == null || !paceOk || paceSecPerKm == null || paceSecPerKm <= 0) { clearOutputs(); return; }
+        var distResult = (timeSec / paceSecPerKm) * 1000;
+        outDistance.textContent = formatDistance(distResult);
+        outTime.textContent = formatDuration(timeSec, timeSec >= 3600);
+        outPace.textContent = formatDuration(paceSecPerKm);
+        outLaps.textContent = trimZeros((distResult / 400).toFixed(2)) + " laps";
+      }
+    }
+
+    solveBtns.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        solveMode = btn.dataset.solve;
+        updateModeUI();
+        recalc();
+        saveState();
+      });
+    });
+    distanceSel.addEventListener("change", function () {
+      updateDistanceUI();
+      recalc();
+      saveState();
+    });
+    [distanceCustom, timeInput, paceInput].forEach(function (el) {
+      el.addEventListener("input", function () {
+        recalc();
+        saveState();
+      });
+    });
+
+    updateDistanceUI();
+    updateModeUI();
+    recalc();
+  })();
+
+  /* ============================================================
+     RACE PREDICTOR  (Riegel's formula)
+     ============================================================ */
+
+  (function racePredictorTool() {
+    var TARGET_DISTANCES = [
+      { label: "1500 m", m: 1500 },
+      { label: "3000 m", m: 3000 },
+      { label: "5000 m", m: 5000 },
+      { label: "10,000 m", m: 10000 },
+      { label: "15,000 m", m: 15000 },
+      { label: "Half marathon", m: 21097.5 },
+      { label: "Marathon", m: 42195 },
+    ];
+
+    var distanceSel = document.getElementById("rp-distance");
+    var distanceCustomWrap = document.getElementById("rp-distance-custom-wrap");
+    var distanceCustom = document.getElementById("rp-distance-custom");
+    var timeInput = document.getElementById("rp-time");
+    var outTableBody = document.querySelector("#rp-out-table tbody");
+
+    function currentDistance() {
+      if (distanceSel.value === "custom") {
+        var v = parseFloat(distanceCustom.value);
+        return v > 0 ? v : null;
+      }
+      return parseFloat(distanceSel.value);
+    }
+
+    function updateDistanceUI() {
+      distanceCustomWrap.hidden = distanceSel.value !== "custom";
+    }
+
+    function recalc() {
+      setError("rp-error", "");
+      var distance = currentDistance();
+      markValid(distanceCustom, distanceSel.value !== "custom" || distance != null);
+      var timeSec = parseTime(timeInput.value);
+      markValid(timeInput, timeSec != null && timeSec > 0);
+
+      if (!(distance > 0) || timeSec == null || timeSec <= 0) {
+        outTableBody.innerHTML = "";
+        return;
+      }
+
+      var rows = "";
+      TARGET_DISTANCES.forEach(function (t) {
+        var predicted = timeSec * Math.pow(t.m / distance, 1.06);
+        var pace = predicted / (t.m / 1000);
+        var isRef = Math.abs(t.m - distance) < 1;
+        rows +=
+          "<tr><td>" + t.label + (isRef ? " — yours" : "") + "</td>" +
+          "<td>" + formatDuration(predicted, predicted >= 3600) + "</td>" +
+          "<td>" + formatDuration(pace) + "</td></tr>";
+      });
+      outTableBody.innerHTML = rows;
+    }
+
+    distanceSel.addEventListener("change", function () {
+      updateDistanceUI();
+      recalc();
+      saveState();
+    });
+    [distanceCustom, timeInput].forEach(function (el) {
+      el.addEventListener("input", function () {
+        recalc();
+        saveState();
+      });
+    });
+
+    updateDistanceUI();
+    recalc();
+  })();
+
+  /* ============================================================
+     EVEN SPLITS
+     ============================================================ */
+
+  (function evenSplitsTool() {
+    var distanceSel = document.getElementById("sp-distance");
+    var distanceCustomWrap = document.getElementById("sp-distance-custom-wrap");
+    var distanceCustom = document.getElementById("sp-distance-custom");
+    var timeInput = document.getElementById("sp-time");
+    var splitSel = document.getElementById("sp-splitdist");
+    var splitCustomWrap = document.getElementById("sp-splitdist-custom-wrap");
+    var splitCustom = document.getElementById("sp-splitdist-custom");
+    var outPace = document.getElementById("sp-out-pace");
+    var outCount = document.getElementById("sp-out-count");
+    var outTableBody = document.querySelector("#sp-out-table tbody");
+
+    function currentDistance() {
+      if (distanceSel.value === "custom") {
+        var v = parseFloat(distanceCustom.value);
+        return v > 0 ? v : null;
+      }
+      return parseFloat(distanceSel.value);
+    }
+
+    function currentSplitDist() {
+      if (splitSel.value === "custom") {
+        var v = parseFloat(splitCustom.value);
+        return v > 0 ? v : null;
+      }
+      return parseFloat(splitSel.value);
+    }
+
+    function updateUI() {
+      distanceCustomWrap.hidden = distanceSel.value !== "custom";
+      splitCustomWrap.hidden = splitSel.value !== "custom";
+    }
+
+    function recalc() {
+      setError("sp-error", "");
+      var distance = currentDistance();
+      markValid(distanceCustom, distanceSel.value !== "custom" || distance != null);
+      var timeSec = parseTime(timeInput.value);
+      markValid(timeInput, timeSec != null && timeSec > 0);
+      var splitDist = currentSplitDist();
+      markValid(splitCustom, splitSel.value !== "custom" || splitDist != null);
+
+      if (!(distance > 0) || timeSec == null || timeSec <= 0 || !(splitDist > 0)) {
+        outPace.textContent = "—";
+        outCount.textContent = "—";
+        outTableBody.innerHTML = "";
+        return;
+      }
+
+      var paceSecPerKm = timeSec / (distance / 1000);
+      outPace.textContent = formatDuration(paceSecPerKm) + " /km";
+
+      var fullSplits = Math.floor(distance / splitDist + 1e-9);
+      var remainder = distance - fullSplits * splitDist;
+      var splitTime = paceSecPerKm * (splitDist / 1000);
+
+      var rows = "";
+      var cumTime = 0;
+      var splitCount = 0;
+      for (var i = 1; i <= fullSplits; i++) {
+        cumTime += splitTime;
+        splitCount++;
+        rows +=
+          "<tr><td>" + i + "</td><td>" + formatDistance(splitDist) + "</td>" +
+          "<td>" + formatDuration(splitTime) + "</td><td>" + formatDuration(cumTime, cumTime >= 3600) + "</td></tr>";
+      }
+      if (remainder > 0.5) {
+        var remTime = paceSecPerKm * (remainder / 1000);
+        cumTime += remTime;
+        splitCount++;
+        rows +=
+          "<tr><td>" + splitCount + "</td><td>" + formatDistance(remainder) + "</td>" +
+          "<td>" + formatDuration(remTime) + "</td><td>" + formatDuration(cumTime, cumTime >= 3600) + "</td></tr>";
+      }
+      rows += '<tr><td>Total</td><td>' + formatDistance(distance) + "</td><td>—</td><td>" + formatDuration(timeSec, timeSec >= 3600) + "</td></tr>";
+      outTableBody.innerHTML = rows;
+      outCount.textContent = String(splitCount);
+    }
+
+    distanceSel.addEventListener("change", function () {
+      updateUI();
+      recalc();
+      saveState();
+    });
+    splitSel.addEventListener("change", function () {
+      updateUI();
+      recalc();
+      saveState();
+    });
+    [distanceCustom, timeInput, splitCustom].forEach(function (el) {
+      el.addEventListener("input", function () {
+        recalc();
+        saveState();
+      });
+    });
+
+    updateUI();
     recalc();
   })();
 

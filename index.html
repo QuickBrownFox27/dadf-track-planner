@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>DADF Track Session Pace Planner</title>
-<meta name="description" content="Pace, recovery and distance calculators for De Agony of De Feet track sessions: interval &amp; recovery, ladders and continuous fartlek." />
+<meta name="description" content="Pace, recovery and distance calculators for De Agony of De Feet track sessions: interval &amp; recovery, ladders, continuous fartlek, plus a pace calculator, race predictor and even-splits tool." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
@@ -23,6 +23,7 @@
   <div class="category-tabs" role="tablist" aria-label="Workout category">
     <button class="category-tab" role="tab" aria-selected="true" data-category="stints">Intervals &amp; Recovery</button>
     <button class="category-tab" role="tab" aria-selected="false" data-category="continuous">Continuous</button>
+    <button class="category-tab" role="tab" aria-selected="false" data-category="tools">Tools</button>
   </div>
 
   <nav class="tabs" role="tablist" aria-label="Session type" data-category-group="stints">
@@ -33,6 +34,12 @@
   <nav class="tabs" role="tablist" aria-label="Session type" data-category-group="continuous" hidden>
     <button class="tab" role="tab" id="tab-btn-mona" aria-controls="panel-mona" aria-selected="true" data-tab="mona">Mona Fartlek</button>
     <button class="tab" role="tab" id="tab-btn-distfartlek" aria-controls="panel-distfartlek" aria-selected="false" data-tab="distfartlek">Fartlek Builder</button>
+  </nav>
+
+  <nav class="tabs" role="tablist" aria-label="Session type" data-category-group="tools" hidden>
+    <button class="tab" role="tab" id="tab-btn-pacecalc" aria-controls="panel-pacecalc" aria-selected="true" data-tab="pacecalc">Pace Calculator</button>
+    <button class="tab" role="tab" id="tab-btn-predictor" aria-controls="panel-predictor" aria-selected="false" data-tab="predictor">Race Predictor</button>
+    <button class="tab" role="tab" id="tab-btn-splits" aria-controls="panel-splits" aria-selected="false" data-tab="splits">Even Splits</button>
   </nav>
 
   <div class="page-layout">
@@ -541,6 +548,217 @@
           <p class="scoreboard-subhead">Garmin Connect steps <span class="hint-inline">(Training &rsaquo; Workouts &rsaquo; Create a Workout)</span></p>
           <p class="garmin-note">Add your own Warm Up and Cool Down (Duration: Open) &mdash; the main set below. Pace targets are &plusmn;5 sec/km ranges; narrow them in Garmin if you want it tighter.</p>
           <ol class="garmin-steps" id="lad-garmin-steps"></ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PACE CALCULATOR ============ -->
+    <section class="panel" id="panel-pacecalc" data-panel="pacecalc" role="tabpanel" aria-labelledby="tab-btn-pacecalc" hidden>
+      <p class="panel-intro">Know any two of distance, time and pace &mdash; get the third. Works for anything, not just the sessions above.</p>
+
+      <div class="tool-grid">
+        <form class="card" id="pc-form">
+          <h2>Solve for</h2>
+          <div class="field-group">
+
+            <div class="field">
+              <label>Solve for</label>
+              <div class="mode-switch" id="pc-solve-mode">
+                <button type="button" data-solve="time" aria-pressed="true">Time</button>
+                <button type="button" data-solve="pace" aria-pressed="false">Pace</button>
+                <button type="button" data-solve="distance" aria-pressed="false">Distance</button>
+              </div>
+            </div>
+
+            <div class="field-row" id="pc-distance-wrap">
+              <div class="field">
+                <label for="pc-distance">Distance</label>
+                <select id="pc-distance">
+                  <option value="400">400 m</option>
+                  <option value="800">800 m</option>
+                  <option value="1000">1000 m</option>
+                  <option value="1600">1600 m</option>
+                  <option value="3000">3000 m</option>
+                  <option value="5000" selected>5000 m</option>
+                  <option value="10000">10,000 m</option>
+                  <option value="21097.5">Half marathon</option>
+                  <option value="42195">Marathon</option>
+                  <option value="custom">Custom&hellip;</option>
+                </select>
+              </div>
+              <div class="field" id="pc-distance-custom-wrap" hidden>
+                <label for="pc-distance-custom">Metres</label>
+                <input type="number" id="pc-distance-custom" min="1" step="1" value="5000" inputmode="numeric" />
+              </div>
+            </div>
+
+            <div class="field" id="pc-time-wrap" hidden>
+              <label for="pc-time">Time</label>
+              <input type="text" id="pc-time" value="25:00" inputmode="numeric" placeholder="m:ss or h:mm:ss" />
+            </div>
+
+            <div class="field" id="pc-pace-wrap">
+              <label for="pc-pace">Pace</label>
+              <div class="pace-field">
+                <input type="text" id="pc-pace" value="5:00" inputmode="numeric" placeholder="m:ss" />
+                <span class="unit-label">/ KM</span>
+              </div>
+            </div>
+
+            <div class="error-msg" id="pc-error"></div>
+          </div>
+        </form>
+
+        <div class="scoreboard" id="pc-scoreboard">
+          <p class="scoreboard-head">Result</p>
+          <div class="stat-row">
+            <div class="stat" id="pc-tile-distance">
+              <p class="stat-label">Distance</p>
+              <p class="stat-value" id="pc-out-distance">&mdash;</p>
+            </div>
+            <div class="stat" id="pc-tile-time">
+              <p class="stat-label">Time</p>
+              <p class="stat-value" id="pc-out-time">&mdash;</p>
+            </div>
+            <div class="stat" id="pc-tile-pace">
+              <p class="stat-label">Pace /km</p>
+              <p class="stat-value" id="pc-out-pace">&mdash;</p>
+            </div>
+            <div class="stat">
+              <p class="stat-label">400m track laps</p>
+              <p class="stat-value" id="pc-out-laps">&mdash;</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ RACE PREDICTOR ============ -->
+    <section class="panel" id="panel-predictor" data-panel="predictor" role="tabpanel" aria-labelledby="tab-btn-predictor" hidden>
+      <p class="panel-intro">Run a solid race or time trial? Predict roughly-equivalent times at other distances using Riegel&rsquo;s formula &mdash; a good ballpark, not a guarantee.</p>
+
+      <div class="tool-grid">
+        <form class="card" id="rp-form">
+          <h2>Your result</h2>
+          <div class="field-group">
+
+            <div class="field-row">
+              <div class="field">
+                <label for="rp-distance">Distance</label>
+                <select id="rp-distance">
+                  <option value="1500">1500 m</option>
+                  <option value="3000">3000 m</option>
+                  <option value="5000" selected>5000 m</option>
+                  <option value="10000">10,000 m</option>
+                  <option value="15000">15,000 m</option>
+                  <option value="21097.5">Half marathon</option>
+                  <option value="42195">Marathon</option>
+                  <option value="custom">Custom&hellip;</option>
+                </select>
+              </div>
+              <div class="field" id="rp-distance-custom-wrap" hidden>
+                <label for="rp-distance-custom">Metres</label>
+                <input type="number" id="rp-distance-custom" min="1" step="1" value="5000" inputmode="numeric" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="rp-time">Time</label>
+              <input type="text" id="rp-time" value="22:00" inputmode="numeric" placeholder="m:ss or h:mm:ss" />
+            </div>
+
+            <div class="error-msg" id="rp-error"></div>
+          </div>
+        </form>
+
+        <div class="scoreboard" id="rp-scoreboard">
+          <p class="scoreboard-head">Predicted times</p>
+          <div class="table-wrap">
+            <table class="data" id="rp-out-table">
+              <thead>
+                <tr><th>Distance</th><th>Predicted time</th><th>Pace /km</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="note">Riegel&rsquo;s formula (T<sub>2</sub> = T<sub>1</sub> &times; (D<sub>2</sub>/D<sub>1</sub>)<sup>1.06</sup>) assumes similar training and conditions across distances &mdash; treat it as a ballpark, especially the further you stretch from your reference distance.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ EVEN SPLITS ============ -->
+    <section class="panel" id="panel-splits" data-panel="splits" role="tabpanel" aria-labelledby="tab-btn-splits" hidden>
+      <p class="panel-intro">Pacing a time trial or a time-based goal on the track? Set your target and split distance, get lap-by-lap splits.</p>
+
+      <div class="tool-grid">
+        <form class="card" id="sp-form">
+          <h2>Set the target</h2>
+          <div class="field-group">
+
+            <div class="field-row">
+              <div class="field">
+                <label for="sp-distance">Total distance</label>
+                <select id="sp-distance">
+                  <option value="800">800 m</option>
+                  <option value="1200">1200 m</option>
+                  <option value="1600">1600 m</option>
+                  <option value="3000">3000 m</option>
+                  <option value="5000" selected>5000 m</option>
+                  <option value="10000">10,000 m</option>
+                  <option value="custom">Custom&hellip;</option>
+                </select>
+              </div>
+              <div class="field" id="sp-distance-custom-wrap" hidden>
+                <label for="sp-distance-custom">Metres</label>
+                <input type="number" id="sp-distance-custom" min="1" step="1" value="5000" inputmode="numeric" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="sp-time">Goal time</label>
+              <input type="text" id="sp-time" value="20:00" inputmode="numeric" placeholder="m:ss or h:mm:ss" />
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="sp-splitdist">Split every</label>
+                <select id="sp-splitdist">
+                  <option value="200">200 m</option>
+                  <option value="400" selected>400 m (1 lap)</option>
+                  <option value="1000">1000 m</option>
+                  <option value="custom">Custom&hellip;</option>
+                </select>
+              </div>
+              <div class="field" id="sp-splitdist-custom-wrap" hidden>
+                <label for="sp-splitdist-custom">Metres</label>
+                <input type="number" id="sp-splitdist-custom" min="1" step="1" value="400" inputmode="numeric" />
+              </div>
+            </div>
+
+            <div class="error-msg" id="sp-error"></div>
+          </div>
+        </form>
+
+        <div class="scoreboard" id="sp-scoreboard">
+          <p class="scoreboard-head">Splits</p>
+          <div class="stat-row">
+            <div class="stat primary">
+              <p class="stat-label">Pace</p>
+              <p class="stat-value" id="sp-out-pace">&mdash;</p>
+            </div>
+            <div class="stat">
+              <p class="stat-label">Splits</p>
+              <p class="stat-value" id="sp-out-count">&mdash;</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data" id="sp-out-table">
+              <thead>
+                <tr><th>Split</th><th>Distance</th><th>Split time</th><th>Cumulative</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>

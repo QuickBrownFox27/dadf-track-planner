@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DADF Track Session Pace Planner</title>
+<meta name="description" content="Pace, recovery and distance calculators for De Agony of De Feet track sessions: interval &amp; recovery, ladders and continuous fartlek." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="wrap">
+
+  <img class="team-banner" src="team-banner.png" alt="The De Agony of De Feet squad running a track session together" width="2061" height="763" />
+
+  <header class="masthead">
+    <img class="brand-logo" src="dadf-logo-crop.jpg" alt="De Agony of De Feet (DADF)" width="1331" height="854" />
+    <span class="brand-sub">Track Session Pace Planner &middot; DADF</span>
+  </header>
+
+  <div class="category-tabs" role="tablist" aria-label="Workout category">
+    <button class="category-tab" role="tab" aria-selected="true" data-category="stints">Intervals &amp; Recovery</button>
+    <button class="category-tab" role="tab" aria-selected="false" data-category="continuous">Continuous</button>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="Session type" data-category-group="stints">
+    <button class="tab" role="tab" id="tab-btn-intervals" aria-controls="panel-intervals" aria-selected="true" data-tab="intervals">Interval Reps</button>
+    <button class="tab" role="tab" id="tab-btn-ladder" aria-controls="panel-ladder" aria-selected="false" data-tab="ladder">Ladder</button>
+  </nav>
+
+  <nav class="tabs" role="tablist" aria-label="Session type" data-category-group="continuous" hidden>
+    <button class="tab" role="tab" id="tab-btn-mona" aria-controls="panel-mona" aria-selected="true" data-tab="mona">Mona Fartlek</button>
+    <button class="tab" role="tab" id="tab-btn-distfartlek" aria-controls="panel-distfartlek" aria-selected="false" data-tab="distfartlek">Fartlek Builder</button>
+  </nav>
+
+  <main>
+
+    <!-- ============ INTERVALS & RECOVERY ============ -->
+    <section class="panel" id="panel-intervals" data-panel="intervals" role="tabpanel" aria-labelledby="tab-btn-intervals">
+      <p class="panel-intro">Set your rep distance and target pace, then describe recovery the way your session actually runs it &mdash; a fixed <strong>cycle</strong> (rep start to rep start), or just a set amount of standing, walking or jogging rest. Built for sessions like 8&times;400m off a 2:30 cycle, or 90 seconds standing between reps.</p>
+
+      <div class="tool-grid">
+        <form class="card" id="iv-form">
+          <h2>Set the reps</h2>
+          <div class="field-group">
+
+            <div class="field-row">
+              <div class="field">
+                <label for="iv-distance">Rep distance</label>
+                <select id="iv-distance">
+                  <option value="200">200 m</option>
+                  <option value="300">300 m</option>
+                  <option value="400" selected>400 m</option>
+                  <option value="600">600 m</option>
+                  <option value="800">800 m</option>
+                  <option value="1000">1000 m</option>
+                  <option value="1200">1200 m</option>
+                  <option value="1600">1600 m</option>
+                  <option value="custom">Custom&hellip;</option>
+                </select>
+              </div>
+              <div class="field" id="iv-distance-custom-wrap" hidden>
+                <label for="iv-distance-custom">Metres</label>
+                <input type="number" id="iv-distance-custom" min="1" step="1" value="500" inputmode="numeric" />
+              </div>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="iv-reps">Reps per set</label>
+                <input type="number" id="iv-reps" min="1" step="1" value="8" inputmode="numeric" />
+              </div>
+              <div class="field">
+                <label for="iv-sets">Sets</label>
+                <input type="number" id="iv-sets" min="1" step="1" value="1" inputmode="numeric" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="iv-reppace">Target rep pace</label>
+              <div class="pace-field">
+                <input type="text" id="iv-reppace" value="3:45" inputmode="numeric" placeholder="m:ss" />
+                <button type="button" class="unit-toggle" id="iv-reppace-unit" data-unit="km">/ KM</button>
+              </div>
+              <div class="equiv-line" id="iv-reppace-equiv" aria-live="polite"></div>
+            </div>
+
+            <div class="field">
+              <label>Recovery is measured as</label>
+              <div class="mode-switch">
+                <button type="button" data-recmode="cycle" aria-pressed="true">Cycle time</button>
+                <button type="button" data-recmode="fixed" aria-pressed="false">Fixed rest</button>
+              </div>
+            </div>
+
+            <div class="field" id="iv-cycle-wrap">
+              <label for="iv-cycle">Cycle time <span class="hint">(rep start to rep start)</span></label>
+              <input type="text" id="iv-cycle" value="2:30" inputmode="numeric" placeholder="m:ss" />
+            </div>
+
+            <div class="field" id="iv-recoveryfixed-wrap" hidden>
+              <label for="iv-recoveryfixed">Rest per rep <span class="hint">(standing, walking or jogging)</span></label>
+              <input type="text" id="iv-recoveryfixed" value="1:00" inputmode="numeric" placeholder="m:ss" />
+            </div>
+
+            <div class="field">
+              <label for="iv-setrest">Rest between sets</label>
+              <input type="text" id="iv-setrest" value="3:00" inputmode="numeric" placeholder="m:ss" />
+            </div>
+
+            <div class="field">
+              <label for="iv-recoverypace">Recovery jog pace <span class="hint">(optional &mdash; estimates jog distance)</span></label>
+              <div class="pace-field">
+                <input type="text" id="iv-recoverypace" value="" inputmode="numeric" placeholder="m:ss" />
+                <button type="button" class="unit-toggle" id="iv-recoverypace-unit" data-unit="km">/ KM</button>
+              </div>
+            </div>
+
+            <div class="error-msg" id="iv-error"></div>
+          </div>
+        </form>
+
+        <div class="scoreboard" id="iv-scoreboard">
+          <p class="scoreboard-head">Session read-out</p>
+          <div class="stat-row">
+            <div class="stat primary">
+              <p class="stat-label">Recovery per rep</p>
+              <p class="stat-value" id="iv-out-recovery">&mdash;</p>
+              <p class="stat-sub" id="iv-out-recovery-dist"></p>
+            </div>
+            <div class="stat">
+              <p class="stat-label">Total reps</p>
+              <p class="stat-value" id="iv-out-totalreps">&mdash;</p>
+            </div>
+            <div class="stat">
+              <p class="stat-label">Total distance</p>
+              <p class="stat-value" id="iv-out-totaldist">&mdash;</p>
+            </div>
+            <div class="stat">
+              <p class="stat-label">Total session time</p>
+              <p class="stat-value" id="iv-out-totaltime">&mdash;</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data" id="iv-out-table">
+              <thead>
+                <tr><th>Set</th><th>Reps &times; Dist</th><th>Rep pace /km</th><th>Rep time</th><th>Cycle</th><th>Recovery</th><th>Set time</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <p class="scoreboard-subhead">Group paces <span class="hint-inline" id="iv-group-summary"></span></p>
+          <div class="table-wrap">
+            <table class="data" id="iv-group-table">
+              <thead>
+                <tr><th>Pace /km</th><th>Rep time</th><th>Recovery</th><th>Cycle</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ MONA FARTLEK ============ -->
+    <section class="panel" id="panel-mona" data-panel="mona" role="tabpanel" aria-labelledby="tab-btn-mona" hidden>
+      <p class="panel-intro">The Mona (Moneghetti) Fartlek: 2&times;90s, 4&times;60s, 4&times;30s and 4&times;15s hard, each matched by an equal &ldquo;float&rdquo; recovery &mdash; 20 minutes, continuous. Hard efforts naturally sharpen as the reps shorten, so set a pace for each length; float stays one steady pace throughout.</p>
+
+      <div class="tool-grid">
+        <form class="card" id="mf-form">
+          <h2>Set your paces</h2>
+          <div class="field-group">
+
+            <div class="field">
+              <label>Hard effort pace <span class="hint">(per segment length &mdash; go quicker as the reps shorten)</span></label>
+              <div class="phase-pace-rows">
+                <div class="phase-pace-row">
+                  <span class="phase-pace-tag">90s</span>
+                  <div class="pace-field">
+                    <input type="text" id="mf-hardpace-90" value="3:45" inputmode="numeric" placeholder="m:ss" />
+                    <button type="button" class="unit-toggle" id="mf-hardpace-90-unit" data-unit="km">/ KM</button>
+                  </div>
+                </div>
+                <div class="phase-pace-row">
+                  <span class="phase-pace-tag">60s</span>
+                  <div class="pace-field">
+                    <input type="text" id="mf-hardpace-60" value="3:35" inputmode="numeric" placeholder="m:ss" />
+                    <button type="button" class="unit-toggle" id="mf-hardpace-60-unit" data-unit="km">/ KM</button>
+                  </div>
+                </div>
+                <div class="phase-pace-row">
+                  <span class="phase-pace-tag">30s</span>
+                  <div class="pace-field">
+                    <input type="text" id="mf-hardpace-30" value="3:15" inputmode="numeric" placeholder="m:ss" />
+                    <button type="button" class="unit-toggle" id="mf-hardpace-30-unit" data-unit="km">/ KM</button>
+                  </div>
+                </div>
+                <div class="phase-pace-row">
+                  <span class="phase-pace-tag">15s</span>
+                  <div class="pace-field">
+                    <input type="text" id="mf-hardpace-15" value="2:50" inputmode="numeric" placeholder="m:ss" />
+                    <button type="button" class="unit-toggle" id="mf-hardpace-15-unit" data-unit="km">/ KM</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="mf-floatpace">Float pace</label>
+              <div class="pace-field">
+                <input type="text" id="mf-floatpace" value="4:30" inputmode="numeric" placeholder="m:ss" />
+                <button type="button" class="unit-toggle" id="mf-floatpace-unit" data-unit="km">/ KM</button>
+              </div>
+              <span class="hint">Between threshold and marathon pace &mdash; quicker than marathon effort, not a jog.</span>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="mf-sets">Sets</label>
+                <input type="number" id="mf-sets" min="1" step="1" value="1" inputmode="numeric" />
+              </div>
+              <div class="field">
+                <label for="mf-setrest">Rest between sets</label>
+                <input type="text" id="mf-setrest" value="3:00" inputmode="numeric" placeholder="m:ss" />
+              </div>
+            </div>
+
+          </div>
+        </form>
+
+        <div class="scoreboard" id="mf-scoreboard">
+          <p class="scoreboard-head">Predicted distance</p>
+          <div class="stat-row">
+            <div class="stat primary">
+              <p class="stat-label">Total distance</p>
+              <p class="stat-value" id="mf-out-totaldist">&mdash;</p>
+            </div>
+            <div class="stat">
+              <p class="stat-label">Hard distance</p>
+              <p class="stat-value" id="mf-out-harddist">&mdash;</p>
+            </div>
+            <div class="stat">
+              <p class="stat-label">Float distance</p>
+              <p class="stat-value" id="mf-out-floatdist">&mdash;</p>
+            </div>
+            <div class="stat">
+              <p class="stat-label">Total session time</p>
+              <p class="stat-value" id="mf-out-totaltime">&mdash;</p>
+            </div>
+          </div>
+
+          <div class="strip-wrap">
+            <div class="strip" id="mf-strip" aria-hidden="true"></div>
+            <div class="strip-phases" id="mf-strip-phases"></div>
+            <div class="strip-legend">
+              <span><i class="legend-dot hard"></i> Hard</span>
+              <span><i class="legend-dot float"></i> Float</span>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="data" id="mf-out-table">
+              <thead>
+                <tr><th>Phase</th><th>Reps</th><th>Hard dist / rep</th><th>Float dist / rep</th><th>Phase distance</th><th>Cumulative</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <p class="scoreboard-subhead">Group paces <span class="hint-inline" id="mf-group-summary"></span></p>
+          <div class="table-wrap">
+            <table class="data" id="mf-group-table">
+              <thead>
+                <tr><th>90s</th><th>60s</th><th>30s</th><th>15s</th><th>Float</th><th>Distance</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="note">Structure: 2&times;90s + 4&times;60s + 4&times;30s + 4&times;15s hard, each with an equal-length float. One set = 20 minutes exactly, on top of your warm-up and cool-down.</p>
+          <p class="note">A float isn&rsquo;t a jog &mdash; hold it between threshold and marathon pace, quicker than marathon effort, so you keep clearing lactate rather than fully recovering. Coach David Roche pegs float effort as easy-to-moderate; running coach Steve Magness puts experienced runners&rsquo; float around marathon pace as the slow end of that range.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FARTLEK BUILDER ============ -->
+    <section class="panel" id="panel-distfartlek" data-panel="distfartlek" role="tabpanel" aria-labelledby="tab-btn-distfartlek" hidden>
+      <p class="panel-intro">Build any continuous fartlek &mdash; hold effort straight through, no stopping. Fix the rep by <strong>distance</strong> (Deek&rsquo;s Quarters, 200s) or by <strong>time</strong> (2 minutes hard / 1 minute recovery, or whatever your session calls for), and it'll work out the other side.</p>
+
+      <div class="tool-grid">
+        <form class="card" id="df-form">
+          <h2>Build the fartlek</h2>
+          <div class="field-group">
+
+            <div class="field">
+              <label>Fix each rep by</label>
+              <div class="mode-switch">
+                <button type="button" data-dfmode="distance" aria-pressed="true">Distance</button>
+                <button type="button" data-dfmode="time" aria-pressed="false">Time</button>
+              </div>
+            </div>
+
+            <div class="field" id="df-presets-distance-wrap">
+              <label>Presets</label>
+              <div class="preset-row">
+                <button type="button" class="chip-btn" aria-pressed="true" data-preset="400,200,8">Deek&rsquo;s Quarters</button>
+                <button type="button" class="chip-btn" data-preset="200,200,12">200s</button>
+              </div>
+            </div>
+
+            <div class="field" id="df-presets-time-wrap" hidden>
+              <label>Presets</label>
+              <div class="preset-row">
+                <button type="button" class="chip-btn" data-preset="2:00,1:00,8">2 min / 1 min</button>
+              </div>
+            </div>
+
+            <div class="field-row" id="df-distance-fields-wrap">
+              <div class="field">
+                <label for="df-harddist">Hard distance</label>
+                <input type="number" id="df-harddist" min="1" step="1" value="400" inputmode="numeric" />
+              </div>
+              <div class="field">
+                <label for="df-floatdist">Recovery distance</label>
+                <input type="number" id="df-floatdist" min="0" step="1" value="200" inputmode="numeric" />
+              </div>
+            </div>
+
+            <div class="field-row" id="df-time-fields-wrap" hidden>
+              <div class="field">
+                <label for="df-harddur">Hard duration</label>
+                <input type="text" id="df-harddur" value="2:00" inputmode="numeric" placeholder="m:ss" />
+              </div>
+              <div class="field">
+                <label for="df-floatdur">Recovery duration</label>
+                <input type="text" id="df-floatdur" value="1:00" inputmode="numeric" placeholder="m:ss" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="df-reps">Reps</label>
+              <input type="number" id="df-reps" min="1" step="1" value="8" inputmode="numeric" />
+            </div>
+
+            <div class="field">
+              <label for="df-hardpace">Hard effort pace</label>
+              <div class="pace-field">
+                <input type="text" id="df-hardpace" value="3:40" inputmode="numeric" placeholder="m:ss" />
+                <button type="button" class="unit-toggle" id="df-hardpace-unit" data-unit="km">/ KM</button>
+              </div>
+              <span class="hint">Threshold &mdash; a touch quicker than current 5K pace.</span>
+            </div>
+
+            <div class="field">
+              <label for="df-floatpace">Recovery pace</label>
+              <div class="pace-field">
+                <input type="text" id="df-floatpace" value="4:15" inputmode="numeric" placeholder="m:ss" />
+                <button type="button" class="unit-toggle" id="df-floatpace-unit" data-unit="km">/ KM</button>
+              </div>
+              <span class="hint">Jog or float, whichever the session calls for &mdash; float (between threshold and marathon pace) trains lactate clearance harder than a plain jog.</span>
+            </div>
+
+            <div class="error-msg" id="df-error"></div>
+          </div>
+        </form>
+
+        <div class="scoreboard" id="df-scoreboard">
+          <p class="scoreboard-head">Session read-out</p>
+          <div class="stat-row">
+            <div class="stat primary">
+              <p class="stat-label">Total distance</p>
+              <p class="stat-value" id="df-out-totaldist">&mdash;</p>
+            </div>
+            <div class="stat">
+              <p class="stat-label">Total session time</p>
+              <p class="stat-value" id="df-out-totaltime">&mdash;</p>
+            </div>
+            <div class="stat">
+              <p class="stat-label">Reps</p>
+              <p class="stat-value" id="df-out-reps">&mdash;</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data" id="df-out-table">
+              <thead>
+                <tr><th>Segment</th><th>Distance</th><th>Pace /km</th><th>Time / rep</th><th>Reps</th><th>Total time</th><th>Total distance</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <p class="scoreboard-subhead">Group paces <span class="hint-inline" id="df-group-summary"></span></p>
+          <div class="table-wrap">
+            <table class="data" id="df-group-table">
+              <thead>
+                <tr id="df-group-thead-row"><th>Hard pace</th><th>Recovery pace</th><th id="df-group-th-metric">Time / rep</th><th id="df-group-th-total">Total time</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="note"><strong>Deek&rsquo;s Quarters</strong> (8&times;400m hard / 200m float) was Rob de Castella&rsquo;s year-round staple; the 200s are a shorter, sharper variant. A float recovery is faster than a jog too &mdash; hold it between threshold and marathon pace rather than shuffling it out.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ LADDER ============ -->
+    <section class="panel" id="panel-ladder" data-panel="ladder" role="tabpanel" aria-labelledby="tab-btn-ladder" hidden>
+      <p class="panel-intro">Build a ladder from any run of distances, set a pace for each rung &mdash; quicker on the way down, however your session calls it &mdash; and choose how recovery scales.</p>
+
+      <div class="tool-grid">
+        <form class="card" id="lad-form">
+          <h2>Build the ladder</h2>
+          <div class="field-group">
+
+            <div class="field">
+              <label>Presets</label>
+              <div class="preset-row">
+                <button type="button" class="chip-btn" data-preset="200,400,600,400,200">Short</button>
+                <button type="button" class="chip-btn" aria-pressed="true" data-preset="400,800,1200,1600,1200,800,400">Classic</button>
+                <button type="button" class="chip-btn" data-preset="400,800,1200,1600,2000,1600,1200,800,400">Long</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="lad-distances">Rung distances <span class="hint">(metres, comma-separated)</span></label>
+              <input type="text" id="lad-distances" value="400,800,1200,1600,1200,800,400" />
+            </div>
+
+            <div class="field">
+              <label>Pace per rung</label>
+              <div class="phase-pace-rows" id="lad-pace-rows"></div>
+              <input type="hidden" id="lad-paces-data" value="" />
+            </div>
+
+            <div class="field">
+              <label for="lad-recmode">Recovery</label>
+              <select id="lad-recmode">
+                <option value="ratio" selected>Ratio of rep time</option>
+                <option value="fixed">Fixed time</option>
+              </select>
+            </div>
+
+            <div class="field" id="lad-ratio-wrap">
+              <label for="lad-ratio">Recovery ratio <span class="hint">(&times; rep time)</span></label>
+              <input type="number" id="lad-ratio" min="0" max="3" step="0.1" value="0.6" inputmode="decimal" />
+            </div>
+
+            <div class="field" id="lad-fixed-wrap" hidden>
+              <label for="lad-fixed">Fixed recovery</label>
+              <input type="text" id="lad-fixed" value="2:00" inputmode="numeric" placeholder="m:ss" />
+            </div>
+
+            <div class="error-msg" id="lad-error"></div>
+          </div>
+        </form>
+
+        <div class="scoreboard" id="lad-scoreboard">
+          <p class="scoreboard-head">Ladder read-out</p>
+          <div class="stat-row">
+            <div class="stat primary">
+              <p class="stat-label">Total work distance</p>
+              <p class="stat-value" id="lad-out-totaldist">&mdash;</p>
+            </div>
+            <div class="stat">
+              <p class="stat-label">Rungs</p>
+              <p class="stat-value" id="lad-out-rungs">&mdash;</p>
+            </div>
+            <div class="stat">
+              <p class="stat-label">Total session time</p>
+              <p class="stat-value" id="lad-out-totaltime">&mdash;</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data" id="lad-out-table">
+              <thead>
+                <tr><th>Rung</th><th>Distance</th><th>Pace /km</th><th>Rep time</th><th>Recovery</th><th>Cumulative dist</th><th>Cumulative time</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <p class="scoreboard-subhead">Group paces <span class="hint-inline" id="lad-group-summary"></span></p>
+          <div class="table-wrap">
+            <table class="data" id="lad-group-table">
+              <thead>
+                <tr id="lad-group-thead-row"><th>Pace /km</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <span>De Agony of De Feet &middot; track session planner</span>
+    <span>Times parse as m:ss or h:mm:ss &mdash; type as you'd say it on the start line.</span>
+  </footer>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

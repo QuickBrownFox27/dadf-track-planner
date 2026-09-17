@@ -5,7 +5,6 @@
 (function () {
   "use strict";
 
-  var MI_PER_KM = 1.609344;
   var STORAGE_KEY = "dadf-planner-v1";
 
   /* Group-paces tiers: seconds/km offset from whatever pace the coach typed in,
@@ -140,10 +139,8 @@
     if (inputEl) inputEl.classList.toggle("invalid", !isValid);
   }
 
-  /* A pace field pairs a text input with a /KM /MI toggle button.
-     Canonical value is always stored as seconds-per-kilometre. */
+  /* A pace field wraps a text input holding a pace in seconds-per-kilometre. */
   function createPaceField(inputEl) {
-    var unit = "km";
     var secPerKm = parseTime(inputEl.value);
     return {
       sync: function (optional) {
@@ -159,17 +156,8 @@
           return false;
         }
         markValid(inputEl, true);
-        secPerKm = unit === "km" ? t : t / MI_PER_KM;
+        secPerKm = t;
         return true;
-      },
-      toggleUnit: function (btnEl) {
-        unit = unit === "km" ? "mi" : "km";
-        if (secPerKm != null) {
-          var displaySec = unit === "km" ? secPerKm : secPerKm * MI_PER_KM;
-          inputEl.value = formatDuration(displaySec);
-        }
-        btnEl.textContent = "/ " + (unit === "km" ? "KM" : "MI");
-        btnEl.dataset.unit = unit;
       },
       get secPerKm() {
         return secPerKm;
@@ -264,7 +252,6 @@
     var repsInput = document.getElementById("iv-reps");
     var setsInput = document.getElementById("iv-sets");
     var repPaceInput = document.getElementById("iv-reppace");
-    var repPaceUnitBtn = document.getElementById("iv-reppace-unit");
     var repPaceEquiv = document.getElementById("iv-reppace-equiv");
 
     var repModeBtns = Array.prototype.slice.call(document.querySelectorAll('#iv-form .mode-switch button[data-repmode]'));
@@ -282,7 +269,6 @@
     var recoveryFixedInput = document.getElementById("iv-recoveryfixed");
     var setRestInput = document.getElementById("iv-setrest");
     var recoveryPaceInput = document.getElementById("iv-recoverypace");
-    var recoveryPaceUnitBtn = document.getElementById("iv-recoverypace-unit");
 
     var outRecovery = document.getElementById("iv-out-recovery");
     var outRecoveryDist = document.getElementById("iv-out-recovery-dist");
@@ -323,13 +309,11 @@
       paceInput.inputMode = "numeric";
       paceInput.placeholder = "m:ss";
       paceInput.value = seedPace;
-      var unitBtn = document.createElement("button");
-      unitBtn.type = "button";
-      unitBtn.className = "unit-toggle";
-      unitBtn.dataset.unit = "km";
-      unitBtn.textContent = "/ KM";
+      var unitLabel = document.createElement("span");
+      unitLabel.className = "unit-label";
+      unitLabel.textContent = "/ KM";
       fieldWrap.appendChild(paceInput);
-      fieldWrap.appendChild(unitBtn);
+      fieldWrap.appendChild(unitLabel);
       var removeBtn = document.createElement("button");
       removeBtn.type = "button";
       removeBtn.className = "gear-row-remove";
@@ -347,7 +331,6 @@
 
       distInput.addEventListener("input", function () { recalc(); saveState(); });
       paceInput.addEventListener("input", function () { recalc(); saveState(); });
-      unitBtn.addEventListener("click", function () { field.toggleUnit(unitBtn); recalc(); saveState(); });
       removeBtn.addEventListener("click", function () {
         if (gearRows.length <= 1) return;
         var idx = gearRows.indexOf(row);
@@ -689,17 +672,7 @@
         saveState();
       });
     });
-    repPaceUnitBtn.addEventListener("click", function () {
-      repPaceField.toggleUnit(repPaceUnitBtn);
-      recalc();
-      saveState();
-    });
     recoveryPaceInput.addEventListener("input", function () {
-      recalc();
-      saveState();
-    });
-    recoveryPaceUnitBtn.addEventListener("click", function () {
-      recoveryField.toggleUnit(recoveryPaceUnitBtn);
       recalc();
       saveState();
     });
@@ -736,7 +709,6 @@
     var SET_SECONDS = PHASES.reduce(function (a, p) { return a + p.reps * p.dur * 2; }, 0); // 1200
 
     var floatInput = document.getElementById("mf-floatpace");
-    var floatUnitBtn = document.getElementById("mf-floatpace-unit");
     var setsInput = document.getElementById("mf-sets");
     var setRestInput = document.getElementById("mf-setrest");
 
@@ -754,11 +726,9 @@
     var hardFields = {};
     PHASES.forEach(function (p) {
       var input = document.getElementById("mf-hardpace-" + p.key);
-      var unitBtn = document.getElementById("mf-hardpace-" + p.key + "-unit");
       var field = createPaceField(input);
       hardFields[p.key] = field;
       input.addEventListener("input", function () { recalc(); saveState(); });
-      unitBtn.addEventListener("click", function () { field.toggleUnit(unitBtn); recalc(); saveState(); });
     });
     var floatField = createPaceField(floatInput);
 
@@ -886,7 +856,6 @@
     }
 
     floatInput.addEventListener("input", function () { recalc(); saveState(); });
-    floatUnitBtn.addEventListener("click", function () { floatField.toggleUnit(floatUnitBtn); recalc(); saveState(); });
     setsInput.addEventListener("input", function () { recalc(); saveState(); });
     setRestInput.addEventListener("input", function () { recalc(); saveState(); });
 
@@ -911,9 +880,7 @@
     var floatDurInput = document.getElementById("df-floatdur");
     var repsInput = document.getElementById("df-reps");
     var hardPaceInput = document.getElementById("df-hardpace");
-    var hardPaceUnitBtn = document.getElementById("df-hardpace-unit");
     var floatPaceInput = document.getElementById("df-floatpace");
-    var floatPaceUnitBtn = document.getElementById("df-floatpace-unit");
 
     var outTotalDist = document.getElementById("df-out-totaldist");
     var outTotalTime = document.getElementById("df-out-totaltime");
@@ -1126,8 +1093,6 @@
     });
     hardPaceInput.addEventListener("input", function () { recalc(); saveState(); });
     floatPaceInput.addEventListener("input", function () { recalc(); saveState(); });
-    hardPaceUnitBtn.addEventListener("click", function () { hardPaceField.toggleUnit(hardPaceUnitBtn); recalc(); saveState(); });
-    floatPaceUnitBtn.addEventListener("click", function () { floatPaceField.toggleUnit(floatPaceUnitBtn); recalc(); saveState(); });
 
     updateModeUI();
     syncPresetPressed();
@@ -1172,19 +1137,16 @@
       input.inputMode = "numeric";
       input.placeholder = "m:ss";
       input.value = seedValue;
-      var btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "unit-toggle";
-      btn.dataset.unit = "km";
-      btn.textContent = "/ KM";
+      var unitLabel = document.createElement("span");
+      unitLabel.className = "unit-label";
+      unitLabel.textContent = "/ KM";
       fieldWrap.appendChild(input);
-      fieldWrap.appendChild(btn);
+      fieldWrap.appendChild(unitLabel);
       rowEl.appendChild(tagEl);
       rowEl.appendChild(fieldWrap);
       paceRowsContainer.appendChild(rowEl);
       var field = createPaceField(input);
       input.addEventListener("input", function () { recalc(); saveState(); });
-      btn.addEventListener("click", function () { field.toggleUnit(btn); recalc(); saveState(); });
       return { rowEl: rowEl, tagEl: tagEl, input: input, field: field };
     }
 
@@ -1403,11 +1365,8 @@
 
       VDOT_ZONES.forEach(function (z) {
         var secPerKm = paceFromVdotAndPercent(vdot, z.pct);
-        var secPerMi = secPerKm * MI_PER_KM;
         var kmEl = document.getElementById("goal-pace-" + z.key);
-        var miEl = document.getElementById("goal-pace-" + z.key + "-mi");
         if (kmEl) kmEl.textContent = formatDuration(secPerKm) + " /km";
-        if (miEl) miEl.textContent = formatDuration(secPerMi) + " /mi";
       });
     }
 
@@ -1422,7 +1381,7 @@
     Array.prototype.slice.call(document.querySelectorAll(".copy-btn[data-copy]")).forEach(function (btn) {
       btn.addEventListener("click", function () {
         var el = document.getElementById(btn.dataset.copy);
-        var text = el ? el.textContent.replace(/\s*\/(km|mi)$/, "") : "";
+        var text = el ? el.textContent.replace(/\s*\/km$/, "") : "";
         if (!text || text === "—") return;
         var restoreLabel = "Copy";
         function flash() {

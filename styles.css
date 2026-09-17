@@ -391,9 +391,10 @@ input.invalid {
   flex: 1;
 }
 
-.unit-toggle {
+.unit-label {
   flex: none;
-  appearance: none;
+  display: flex;
+  align-items: center;
   border: 1px solid var(--line-strong);
   background: var(--paper);
   color: var(--ink-dim);
@@ -403,12 +404,7 @@ input.invalid {
   letter-spacing: 0.04em;
   border-radius: 7px;
   padding: 0 10px;
-  cursor: pointer;
   white-space: nowrap;
-}
-
-.unit-toggle:hover {
-  color: var(--ink);
 }
 
 .phase-pace-rows {

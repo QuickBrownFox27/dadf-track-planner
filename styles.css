@@ -446,6 +446,55 @@ input.invalid {
   color: var(--ink-dim);
 }
 
+.gear-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gear-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gear-row .gear-tag {
+  flex: none;
+  width: 18px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: var(--ink-dim);
+}
+
+.gear-row .gear-dist {
+  flex: none;
+  width: 68px;
+}
+
+.gear-row .pace-field {
+  flex: 1;
+}
+
+.gear-row-remove {
+  flex: none;
+  appearance: none;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink-dim);
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.gear-row-remove:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
 .checkbox-field {
   display: flex;
   flex-direction: row;

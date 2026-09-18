@@ -232,6 +232,33 @@
 
   restoreState();
 
+  /* ---------------- mobile-friendly time entry ---------------- */
+  /* iOS/Android numeric keypads (inputmode="numeric") have no colon key,
+     so auto-insert colons as digits are typed. Delegated on document (capture
+     phase, ahead of each field's own recalc listener) so it also covers rows
+     added dynamically later, like gear segments and ladder rungs. */
+
+  function isTimeField(el) {
+    return el.tagName === "INPUT" && el.type === "text" && el.placeholder && el.placeholder.indexOf(":") !== -1;
+  }
+
+  function formatTimeDigits(raw) {
+    var digits = raw.replace(/\D/g, "").slice(0, 6);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 4) return digits.slice(0, -2) + ":" + digits.slice(-2);
+    return digits.slice(0, -4) + ":" + digits.slice(-4, -2) + ":" + digits.slice(-2);
+  }
+
+  document.addEventListener(
+    "input",
+    function (e) {
+      if (!isTimeField(e.target)) return;
+      var formatted = formatTimeDigits(e.target.value);
+      if (formatted !== e.target.value) e.target.value = formatted;
+    },
+    true
+  );
+
   /* ---------------- tabs ---------------- */
 
   var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));

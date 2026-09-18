@@ -886,8 +886,31 @@ table.data:not(.group-table) tr:last-child td {
   background: var(--scoreboard-accent);
 }
 
+/* Gear-shift / per-rung strips grade the hard segments by relative pace —
+   shade-0 is the slowest gear present, shade-3 the fastest (same gold as
+   the default, unshaded .hard above). */
+.strip-seg.hard.shade-0 {
+  background: hsl(46, 40%, 34%);
+}
+
+.strip-seg.hard.shade-1 {
+  background: hsl(46, 60%, 42%);
+}
+
+.strip-seg.hard.shade-2 {
+  background: hsl(46, 78%, 48%);
+}
+
+.strip-seg.hard.shade-3 {
+  background: var(--scoreboard-accent);
+}
+
 .strip-seg.float {
   background: #46d1e0;
+}
+
+.strip-seg + .strip-seg {
+  border-left: 1px solid rgba(0, 0, 0, 0.25);
 }
 
 .strip-phases {

@@ -123,16 +123,34 @@
     el.innerHTML = html;
   }
 
+  var STRIP_SHADE_TIERS = 4;
+
   /* Renders the hard/recovery effort strip used across the session tools.
-     segments: [{cls:'hard'|'float', dur}] in order — widths are proportional
-     to duration. groups (optional): [{label, dur}] for a label row beneath,
-     e.g. one label per rung/phase spanning its segments' combined width. */
+     segments: [{cls:'hard'|'float', dur, paceKm?}] in order — widths are
+     proportional to duration. When 'hard' segments carry different paceKm
+     values (a gear-shift rep, a ladder with per-rung paces), each gets one
+     of a few shades graded by how fast it is relative to the others in this
+     same strip — the segment closest to the fastest pace present here reads
+     as the deepest gold. groups (optional): [{label, dur}] for a label row
+     beneath, e.g. one label per rung/phase spanning its segments' width. */
   function renderStrip(stripEl, groupsEl, segments, groups) {
     if (!stripEl) return;
+    var hardPaces = segments
+      .filter(function (s) { return s.cls === "hard" && s.paceKm != null; })
+      .map(function (s) { return s.paceKm; });
+    var minPace = hardPaces.length ? Math.min.apply(null, hardPaces) : null;
+    var maxPace = hardPaces.length ? Math.max.apply(null, hardPaces) : null;
+    var hasSpread = minPace != null && maxPace != null && maxPace > minPace;
+
     var total = segments.reduce(function (a, s) { return a + s.dur; }, 0);
     stripEl.innerHTML = total > 0
       ? segments.map(function (s) {
-          return '<div class="strip-seg ' + s.cls + '" style="width:' + (s.dur / total) * 100 + '%"></div>';
+          var shadeClass = "";
+          if (s.cls === "hard" && hasSpread && s.paceKm != null) {
+            var t = (maxPace - s.paceKm) / (maxPace - minPace); // 0 slowest .. 1 fastest
+            shadeClass = " shade-" + Math.round(t * (STRIP_SHADE_TIERS - 1));
+          }
+          return '<div class="strip-seg ' + s.cls + shadeClass + '" style="width:' + (s.dur / total) * 100 + '%"></div>';
         }).join("")
       : "";
     if (!groupsEl) return;
@@ -579,9 +597,9 @@
       var stripSegments = [];
       for (var gi = 0; gi < reps; gi++) {
         if (repMode === "gear") {
-          gearList.forEach(function (g) { stripSegments.push({ cls: "hard", dur: g.time }); });
+          gearList.forEach(function (g) { stripSegments.push({ cls: "hard", dur: g.time, paceKm: g.paceKm }); });
         } else {
-          stripSegments.push({ cls: "hard", dur: repTimeSec });
+          stripSegments.push({ cls: "hard", dur: repTimeSec, paceKm: paceKm });
         }
         if (gi < reps - 1) stripSegments.push({ cls: "float", dur: recoverySec });
       }
@@ -1420,7 +1438,7 @@
           "<td>" + (isLast ? "—" : formatDuration(recovery)) + "</td>" +
           "<td>" + formatDistance(cumDist) + "</td>" +
           "<td>" + formatDuration(cumTime, cumTime >= 3600) + "</td></tr>";
-        stripSegments.push({ cls: "hard", dur: repTime });
+        stripSegments.push({ cls: "hard", dur: repTime, paceKm: paceKm });
         var groupDur = repTime;
         if (!isLast) {
           stripSegments.push({ cls: "float", dur: recovery });

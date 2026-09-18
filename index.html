@@ -479,7 +479,7 @@
 
     <!-- ============ LADDER ============ -->
     <section class="panel" id="panel-ladder" data-panel="ladder" role="tabpanel" aria-labelledby="tab-btn-ladder" hidden>
-      <p class="panel-intro">Build a ladder from any run of distances, set a pace for each rung &mdash; quicker on the way down, however your session calls it &mdash; and choose how recovery scales.</p>
+      <p class="panel-intro">Build a ladder from any run of distances, set a pace for each rung &mdash; quicker on the way down, however your session calls it &mdash; choose how recovery scales (including its own cycle time per rung), and repeat the whole sequence as many laps as you like.</p>
 
       <div class="tool-grid">
         <form class="card" id="lad-form">
@@ -507,10 +507,16 @@
             </div>
 
             <div class="field">
+              <label for="lad-repeats">Repeat sequence <span class="hint">(&times; laps)</span></label>
+              <input type="number" id="lad-repeats" min="1" step="1" value="1" inputmode="numeric" />
+            </div>
+
+            <div class="field">
               <label for="lad-recmode">Recovery</label>
               <select id="lad-recmode">
                 <option value="ratio" selected>Ratio of rep time</option>
                 <option value="fixed">Fixed time</option>
+                <option value="cycle">Cycle time (per rung)</option>
               </select>
             </div>
 
@@ -522,6 +528,12 @@
             <div class="field" id="lad-fixed-wrap" hidden>
               <label for="lad-fixed">Fixed recovery</label>
               <input type="text" id="lad-fixed" value="2:00" inputmode="numeric" placeholder="m:ss" />
+            </div>
+
+            <div class="field" id="lad-cycle-wrap" hidden>
+              <label>Cycle time per rung <span class="hint">(rep start to rep start)</span></label>
+              <div class="phase-pace-rows" id="lad-cycle-rows"></div>
+              <input type="hidden" id="lad-cycles-data" value="" />
             </div>
 
             <div class="error-msg" id="lad-error"></div>

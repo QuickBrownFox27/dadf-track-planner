@@ -192,7 +192,7 @@
     "iv-cycle", "iv-recoveryfixed", "iv-setrest", "iv-recoverypace", "iv-gears-data",
     "mf-hardpace-90", "mf-hardpace-60", "mf-hardpace-30", "mf-hardpace-15", "mf-floatpace", "mf-sets", "mf-setrest",
     "df-harddist", "df-floatdist", "df-harddur", "df-floatdur", "df-reps", "df-hardpace", "df-floatpace",
-    "lad-distances", "lad-paces-data", "lad-recmode", "lad-ratio", "lad-fixed",
+    "lad-distances", "lad-paces-data", "lad-recmode", "lad-ratio", "lad-fixed", "lad-cycles-data", "lad-repeats",
     "goal-5k", "goal-10k", "goal-half", "goal-full",
     "pc-distance", "pc-distance-custom", "pc-time", "pc-pace",
     "rp-distance", "rp-distance-custom", "rp-time",
@@ -1181,11 +1181,15 @@
     var distancesInput = document.getElementById("lad-distances");
     var paceRowsContainer = document.getElementById("lad-pace-rows");
     var pacesDataInput = document.getElementById("lad-paces-data");
+    var repeatsInput = document.getElementById("lad-repeats");
     var recModeSel = document.getElementById("lad-recmode");
     var ratioWrap = document.getElementById("lad-ratio-wrap");
     var ratioInput = document.getElementById("lad-ratio");
     var fixedWrap = document.getElementById("lad-fixed-wrap");
     var fixedInput = document.getElementById("lad-fixed");
+    var cycleWrap = document.getElementById("lad-cycle-wrap");
+    var cycleRowsContainer = document.getElementById("lad-cycle-rows");
+    var cyclesDataInput = document.getElementById("lad-cycles-data");
 
     var outTotalDist = document.getElementById("lad-out-totaldist");
     var outRungs = document.getElementById("lad-out-rungs");
@@ -1242,6 +1246,45 @@
       });
     }
 
+    var cycleRows = [];
+
+    function makeCycleRow(seedValue) {
+      var rowEl = document.createElement("div");
+      rowEl.className = "phase-pace-row";
+      var tagEl = document.createElement("span");
+      tagEl.className = "phase-pace-tag";
+      var fieldWrap = document.createElement("div");
+      fieldWrap.className = "pace-field";
+      var input = document.createElement("input");
+      input.type = "text";
+      input.inputMode = "numeric";
+      input.placeholder = "m:ss";
+      input.value = seedValue;
+      fieldWrap.appendChild(input);
+      rowEl.appendChild(tagEl);
+      rowEl.appendChild(fieldWrap);
+      cycleRowsContainer.appendChild(rowEl);
+      input.addEventListener("input", function () { recalc(); saveState(); });
+      return { rowEl: rowEl, tagEl: tagEl, input: input };
+    }
+
+    function ensureCycleRowCount(n, seedValues) {
+      while (cycleRows.length < n) {
+        var idx = cycleRows.length;
+        var seed = seedValues && seedValues[idx] != null && seedValues[idx] !== "" ? seedValues[idx] : "2:30";
+        cycleRows.push(makeCycleRow(seed));
+      }
+      while (cycleRows.length > n) {
+        cycleRows.pop().rowEl.remove();
+      }
+    }
+
+    function updateCycleRowTags(raw) {
+      raw.forEach(function (dist, i) {
+        if (cycleRows[i]) cycleRows[i].tagEl.textContent = (i + 1) + " · " + formatDistance(dist);
+      });
+    }
+
     function syncPresetPressed() {
       var current = distancesInput.value.replace(/\s+/g, "");
       presetBtns.forEach(function (btn) {
@@ -1250,9 +1293,10 @@
     }
 
     function updateRecoveryModeUI() {
-      var isFixed = recModeSel.value === "fixed";
-      ratioWrap.hidden = isFixed;
-      fixedWrap.hidden = !isFixed;
+      var mode = recModeSel.value;
+      ratioWrap.hidden = mode !== "ratio";
+      fixedWrap.hidden = mode !== "fixed";
+      cycleWrap.hidden = mode !== "cycle";
     }
 
     function recalc() {
@@ -1267,27 +1311,49 @@
       updatePaceRowTags(raw);
       pacesDataInput.value = paceRows.map(function (r) { return r.input.value; }).join(",");
 
+      ensureCycleRowCount(raw.length);
+      updateCycleRowTags(raw);
+      cyclesDataInput.value = cycleRows.map(function (r) { return r.input.value; }).join(",");
+
       var paceOk = true;
       paceRows.forEach(function (r) {
         if (!r.field.sync(false)) paceOk = false;
       });
 
       var recMode = recModeSel.value;
-      var ratio = null, fixedRec = null;
+      var ratio = null, fixedRec = null, cycleOk = true;
       if (recMode === "ratio") {
         ratio = parseFloat(ratioInput.value);
         markValid(ratioInput, ratio != null && ratio >= 0 && !isNaN(ratio));
-      } else {
+      } else if (recMode === "fixed") {
         fixedRec = parseTime(fixedInput.value);
         markValid(fixedInput, fixedRec != null && fixedRec >= 0);
+      } else {
+        cycleRows.forEach(function (r) {
+          var t = parseTime(r.input.value);
+          var ok = t != null && t > 0;
+          markValid(r.input, ok);
+          if (!ok) cycleOk = false;
+        });
       }
+      var cycleSecs = cycleRows.map(function (r) { return parseTime(r.input.value); });
+
+      var repeats = parseInt(repeatsInput.value, 10);
+      markValid(repeatsInput, repeats >= 1);
 
       if (raw.length === 0) setError("lad-error", "Enter at least one rung distance, e.g. 400,800,1200.");
       else if (!paceOk) setError("lad-error", "Enter a valid pace for every rung.");
       else if (recMode === "ratio" && (ratio == null || isNaN(ratio) || ratio < 0)) setError("lad-error", "Recovery ratio must be zero or greater.");
       else if (recMode === "fixed" && fixedRec == null) setError("lad-error", "Enter a valid fixed recovery time.");
+      else if (recMode === "cycle" && !cycleOk) setError("lad-error", "Enter a valid cycle time for every rung.");
+      else if (!(repeats >= 1)) setError("lad-error", "Repeat count must be at least 1.");
 
-      if (raw.length === 0 || !paceOk || (recMode === "ratio" ? ratio == null || isNaN(ratio) : fixedRec == null)) {
+      var recModeValueOk =
+        recMode === "ratio" ? ratio != null && !isNaN(ratio) && ratio >= 0 :
+        recMode === "fixed" ? fixedRec != null :
+        cycleOk;
+
+      if (raw.length === 0 || !paceOk || !recModeValueOk || !(repeats >= 1)) {
         outTotalDist.textContent = "—";
         outRungs.textContent = "—";
         outTotalTime.textContent = "—";
@@ -1300,15 +1366,50 @@
         return;
       }
 
+      if (recMode === "cycle") {
+        var badIdx = -1;
+        for (var ci = 0; ci < raw.length; ci++) {
+          var badRepTime = paceRows[ci].field.secPerKm * (raw[ci] / 1000);
+          if (cycleSecs[ci] <= badRepTime) { badIdx = ci; break; }
+        }
+        if (badIdx !== -1) {
+          var badRepTime2 = paceRows[badIdx].field.secPerKm * (raw[badIdx] / 1000);
+          setError(
+            "lad-error",
+            "Rung " + (badIdx + 1) + "'s cycle time (" + formatDuration(cycleSecs[badIdx]) +
+              ") must be longer than its rep time (" + formatDuration(badRepTime2) + ")."
+          );
+          outTotalDist.textContent = "—";
+          outRungs.textContent = "—";
+          outTotalTime.textContent = "—";
+          outTableBody.innerHTML = "";
+          groupTableBody.innerHTML = "";
+          groupSummary.textContent = "";
+          garminStepsEl.innerHTML = "";
+          stripEl.innerHTML = "";
+          stripPhasesEl.innerHTML = "";
+          return;
+        }
+      }
+
+      function recoveryForBase(baseIdx, repTime) {
+        if (recMode === "fixed") return fixedRec;
+        if (recMode === "ratio") return ratio * repTime;
+        return cycleSecs[baseIdx] - repTime;
+      }
+
+      var seqLen = raw.length * repeats;
       var cumDist = 0, cumTime = 0;
       var rows = "";
       var stripSegments = [];
       var stripGroups = [];
-      raw.forEach(function (dist, i) {
-        var paceKm = paceRows[i].field.secPerKm;
+      for (var i = 0; i < seqLen; i++) {
+        var baseIdx = i % raw.length;
+        var dist = raw[baseIdx];
+        var paceKm = paceRows[baseIdx].field.secPerKm;
         var repTime = paceKm * (dist / 1000);
-        var recovery = recMode === "fixed" ? fixedRec : ratio * repTime;
-        var isLast = i === raw.length - 1;
+        var recovery = recoveryForBase(baseIdx, repTime);
+        var isLast = i === seqLen - 1;
         cumDist += dist;
         cumTime += repTime + (isLast ? 0 : recovery);
         rows +=
@@ -1326,16 +1427,21 @@
           groupDur += recovery;
         }
         stripGroups.push({ label: formatDistance(dist), dur: groupDur });
-      });
+      }
       outTableBody.innerHTML = rows;
       renderStrip(stripEl, stripPhasesEl, stripSegments, stripGroups);
       outTotalDist.textContent = formatDistance(cumDist);
-      outRungs.textContent = String(raw.length);
+      outRungs.textContent = String(seqLen);
       outTotalTime.textContent = formatDuration(cumTime, cumTime >= 3600);
 
+      var recoveryLabel =
+        recMode === "fixed" ? formatDuration(fixedRec) + " recovery" :
+        recMode === "ratio" ? ratio + "× rep-time recovery" :
+        "cycle recovery";
       groupSummary.textContent =
         "— " + raw.map(formatDistance).join(" - ") +
-        (recMode === "fixed" ? ", " + formatDuration(fixedRec) + " recovery" : ", " + ratio + "× rep-time recovery");
+        (repeats > 1 ? " × " + repeats : "") +
+        ", " + recoveryLabel;
       var headHtml = "<th>Pace band</th>";
       raw.forEach(function (dist) { headHtml += "<th>" + formatDistance(dist) + "</th>"; });
       headHtml += "<th>Total</th>";
@@ -1343,18 +1449,26 @@
 
       var groupRows = "";
       PACE_TIERS.forEach(function (offset) {
-        var tierOk = paceRows.every(function (r) { return r.field.secPerKm + offset > 0; });
+        var tierPaceKm = raw.map(function (dist, i) { return paceRows[i].field.secPerKm + offset; });
+        var tierOk = tierPaceKm.every(function (p) { return p > 0; });
+        if (tierOk && recMode === "cycle") {
+          tierOk = raw.every(function (dist, i) {
+            var tRepTime = tierPaceKm[i] * (dist / 1000);
+            return cycleSecs[i] - tRepTime >= 0;
+          });
+        }
         if (!tierOk) return;
         var tCum = 0;
         var cellsHtml = "";
-        raw.forEach(function (dist, i) {
-          var tierPaceKm = paceRows[i].field.secPerKm + offset;
-          var tRepTime = tierPaceKm * (dist / 1000);
-          var tRecovery = recMode === "fixed" ? fixedRec : ratio * tRepTime;
-          var isLast = i === raw.length - 1;
-          tCum += tRepTime + (isLast ? 0 : tRecovery);
-          cellsHtml += "<td>" + formatDuration(tRepTime) + "</td>";
-        });
+        for (var ti = 0; ti < seqLen; ti++) {
+          var tBaseIdx = ti % raw.length;
+          var tDist = raw[tBaseIdx];
+          var tRepTime = tierPaceKm[tBaseIdx] * (tDist / 1000);
+          var tRecovery = recoveryForBase(tBaseIdx, tRepTime);
+          var tIsLast = ti === seqLen - 1;
+          tCum += tRepTime + (tIsLast ? 0 : tRecovery);
+          if (ti < raw.length) cellsHtml += "<td>" + formatDuration(tRepTime) + "</td>";
+        }
         var label = (offset > 0 ? "+" : "") + offset + "s/km";
         groupRows +=
           "<tr><td>" + label + "</td>" +
@@ -1363,17 +1477,22 @@
       });
       groupTableBody.innerHTML = groupRows;
 
-      var garminBlocks = [];
+      var lapSteps = [];
       raw.forEach(function (dist, i) {
         var paceKm = paceRows[i].field.secPerKm;
         var repTime = paceKm * (dist / 1000);
-        garminBlocks.push({ label: "Rung " + (i + 1), detail: garminDetail("Distance", formatDistance(dist), garminPaceRange(paceKm)) });
-        var isLast = i === raw.length - 1;
-        if (!isLast) {
-          var recovery = recMode === "fixed" ? fixedRec : ratio * repTime;
-          garminBlocks.push({ label: "Recovery", detail: garminDetail("Time", formatDuration(recovery), null) });
+        var isLastRungOfLap = i === raw.length - 1;
+        lapSteps.push({ label: "Rung " + (i + 1), detail: garminDetail("Distance", formatDistance(dist), garminPaceRange(paceKm)) });
+        if (repeats > 1 || !isLastRungOfLap) {
+          var recovery = recoveryForBase(i, repTime);
+          var recoveryDetail =
+            recMode === "cycle"
+              ? "Lap Button Press — rest until the caller says go (≈ " + formatDuration(recovery) + ") · Open (no target)"
+              : garminDetail("Time", formatDuration(recovery), null);
+          lapSteps.push({ label: "Recovery", detail: recoveryDetail });
         }
       });
+      var garminBlocks = repeats > 1 ? [{ repeat: repeats, steps: lapSteps }] : lapSteps;
       renderGarminSteps(garminStepsEl, garminBlocks);
     }
 
@@ -1393,6 +1512,7 @@
     recModeSel.addEventListener("change", function () { updateRecoveryModeUI(); recalc(); saveState(); });
     ratioInput.addEventListener("input", function () { recalc(); saveState(); });
     fixedInput.addEventListener("input", function () { recalc(); saveState(); });
+    repeatsInput.addEventListener("input", function () { recalc(); saveState(); });
 
     var initialRaw = distancesInput.value
       .split(",")
@@ -1401,6 +1521,10 @@
     var savedPaces = (pacesDataInput.value || "").split(",").map(function (s) { return s.trim(); });
     ensurePaceRowCount(initialRaw.length, savedPaces.length === initialRaw.length ? savedPaces : null);
     updatePaceRowTags(initialRaw);
+
+    var savedCycles = (cyclesDataInput.value || "").split(",").map(function (s) { return s.trim(); });
+    ensureCycleRowCount(initialRaw.length, savedCycles.length === initialRaw.length ? savedCycles : null);
+    updateCycleRowTags(initialRaw);
 
     updateRecoveryModeUI();
     syncPresetPressed();

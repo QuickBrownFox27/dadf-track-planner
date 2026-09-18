@@ -428,7 +428,8 @@ input.invalid {
   color: var(--ink-dim);
 }
 
-#lad-pace-rows .phase-pace-tag {
+#lad-pace-rows .phase-pace-tag,
+#lad-cycle-rows .phase-pace-tag {
   width: 64px;
 }
 

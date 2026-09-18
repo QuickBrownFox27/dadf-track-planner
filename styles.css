@@ -846,6 +846,9 @@ table.data td {
 
 table.data tr:last-child td {
   border-bottom: none;
+}
+
+table.data:not(.group-table) tr:last-child td {
   color: var(--scoreboard-accent);
   font-weight: 600;
 }

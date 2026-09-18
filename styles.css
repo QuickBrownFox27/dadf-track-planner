@@ -887,22 +887,22 @@ table.data:not(.group-table) tr:last-child td {
 }
 
 /* Gear-shift / per-rung strips grade the hard segments by relative pace —
-   shade-0 is the slowest gear present, shade-3 the fastest (same gold as
-   the default, unshaded .hard above). */
+   shade-0 (slowest gear present) keeps the standard yellow-gold, climbing
+   through orange to coral at shade-3 (fastest). */
 .strip-seg.hard.shade-0 {
-  background: hsl(46, 45%, 40%);
+  background: var(--scoreboard-accent);
 }
 
 .strip-seg.hard.shade-1 {
-  background: hsl(40, 65%, 46%);
+  background: hsl(35, 92%, 56%);
 }
 
 .strip-seg.hard.shade-2 {
-  background: hsl(33, 80%, 50%);
+  background: hsl(24, 94%, 60%);
 }
 
 .strip-seg.hard.shade-3 {
-  background: hsl(26, 90%, 54%);
+  background: hsl(16, 100%, 66%);
 }
 
 .strip-seg.float {

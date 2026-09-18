@@ -208,6 +208,7 @@
   var PERSIST_IDS = [
     "iv-distance", "iv-distance-custom", "iv-reps", "iv-sets", "iv-reppace",
     "iv-cycle", "iv-recoveryfixed", "iv-setrest", "iv-recoverypace", "iv-gears-data",
+    "iv-time-dur", "iv-time-pace",
     "mf-hardpace-90", "mf-hardpace-60", "mf-hardpace-30", "mf-hardpace-15", "mf-floatpace", "mf-sets", "mf-setrest",
     "df-harddist", "df-floatdist", "df-harddur", "df-floatdur", "df-reps", "df-hardpace", "df-floatpace",
     "lad-distances", "lad-paces-data", "lad-recmode", "lad-ratio", "lad-fixed", "lad-cycles-data", "lad-repeats",
@@ -322,6 +323,13 @@
     var repPaceInput = document.getElementById("iv-reppace");
     var repPaceEquiv = document.getElementById("iv-reppace-equiv");
 
+    var measureByBtns = Array.prototype.slice.call(document.querySelectorAll('#iv-form .mode-switch button[data-measureby]'));
+    var distanceModeWrap = document.getElementById("iv-distance-mode-wrap");
+    var timeWrap = document.getElementById("iv-time-wrap");
+    var timeDurInput = document.getElementById("iv-time-dur");
+    var timePaceInput = document.getElementById("iv-time-pace");
+    var timeEquiv = document.getElementById("iv-time-equiv");
+
     var repModeBtns = Array.prototype.slice.call(document.querySelectorAll('#iv-form .mode-switch button[data-repmode]'));
     var singleWrap = document.getElementById("iv-single-wrap");
     var gearWrap = document.getElementById("iv-gear-wrap");
@@ -345,6 +353,7 @@
     var outTotalTime = document.getElementById("iv-out-totaltime");
     var gearBreakdownWrap = document.getElementById("iv-gear-breakdown-wrap");
     var gearBreakdownBody = document.querySelector("#iv-gear-breakdown-table tbody");
+    var outTheadRow = document.getElementById("iv-out-thead-row");
     var outTableBody = document.querySelector("#iv-out-table tbody");
     var groupSummary = document.getElementById("iv-group-summary");
     var groupTheadRow = document.getElementById("iv-group-thead-row");
@@ -354,8 +363,10 @@
 
     var recoveryField = createPaceField(recoveryPaceInput);
     var repPaceField = createPaceField(repPaceInput);
+    var timePaceField = createPaceField(timePaceInput);
     var recMode = "cycle";
     var repMode = "single";
+    var measureBy = "distance";
     var gearRows = [];
 
     function makeGearRow(seedDist, seedPace) {
@@ -442,6 +453,14 @@
       });
     }
 
+    function updateMeasureByUI() {
+      distanceModeWrap.hidden = measureBy !== "distance";
+      timeWrap.hidden = measureBy !== "time";
+      measureByBtns.forEach(function (b) {
+        b.setAttribute("aria-pressed", b.dataset.measureby === measureBy ? "true" : "false");
+      });
+    }
+
     function updateRecModeUI() {
       cycleWrap.hidden = recMode !== "cycle";
       recoveryFixedWrap.hidden = recMode !== "fixed";
@@ -468,8 +487,19 @@
       var distance, repTimeSec, paceKm;
       var gearsValid = true;
       var gearList = [];
+      var isGearMode = measureBy === "distance" && repMode === "gear";
 
-      if (repMode === "single") {
+      if (measureBy === "time") {
+        repTimeSec = parseTime(timeDurInput.value);
+        markValid(timeDurInput, repTimeSec != null && repTimeSec > 0);
+        var timePaceOk = timePaceField.sync(true);
+        if (!timePaceOk) setError("iv-error", "Target pace isn't a valid time.");
+        paceKm = timePaceOk ? timePaceField.secPerKm : null;
+        distance = paceKm != null && repTimeSec != null ? (repTimeSec / paceKm) * 1000 : null;
+        timeEquiv.textContent = distance != null ? "≈ " + formatDistance(distance) + " covered" : "";
+        repPaceEquiv.textContent = "";
+        gearEquiv.textContent = "";
+      } else if (!isGearMode) {
         distance = currentDistance();
         markValid(distanceCustom, distanceSel.value !== "custom" || distance != null);
         var repPaceOk = repPaceField.sync(false);
@@ -525,7 +555,10 @@
       var recoveryOk = recoveryField.sync(true);
       if (!recoveryOk) setError("iv-error", "Recovery jog pace isn't a valid time.");
 
-      var repDataOk = repMode === "single" ? (distance > 0 && repTimeSec != null) : (gearsValid && distance > 0 && gearRows.length > 0);
+      var repDataOk =
+        measureBy === "time" ? repTimeSec != null && repTimeSec > 0 :
+        !isGearMode ? (distance > 0 && repTimeSec != null) :
+        (gearsValid && distance > 0 && gearRows.length > 0);
       var recModeValueOk = recMode === "cycle" ? cycleSec != null : recoveryFixedSec != null;
 
       if (!repDataOk || !(reps >= 1) || !(sets >= 1) || !recModeValueOk || setRestSec == null) {
@@ -569,7 +602,7 @@
       outRecoveryDist.textContent = recoveryJogDist != null ? "≈ " + formatDistance(recoveryJogDist) + " jog" : "";
 
       var totalReps = reps * sets;
-      var totalRepDist = totalReps * distance;
+      var totalRepDist = distance != null ? totalReps * distance : null;
       var recoveriesPerSet = Math.max(0, reps - 1);
       var totalRecoveriesCount = recoveriesPerSet * sets;
       var totalRecoveryDist = recoveryJogDist != null ? totalRecoveriesCount * recoveryJogDist : 0;
@@ -578,10 +611,10 @@
       var totalSessionTime = sets * setTime + Math.max(0, sets - 1) * setRestSec;
 
       outTotalReps.textContent = String(totalReps);
-      outTotalDist.textContent = formatDistance(totalRepDist + totalRecoveryDist);
+      outTotalDist.textContent = totalRepDist != null ? formatDistance(totalRepDist + totalRecoveryDist) : "—";
       outTotalTime.textContent = formatDuration(totalSessionTime, totalSessionTime >= 3600);
 
-      if (repMode === "gear") {
+      if (isGearMode) {
         gearBreakdownWrap.hidden = false;
         var gRows = "";
         gearList.forEach(function (g, i) {
@@ -596,7 +629,7 @@
 
       var stripSegments = [];
       for (var gi = 0; gi < reps; gi++) {
-        if (repMode === "gear") {
+        if (isGearMode) {
           gearList.forEach(function (g) { stripSegments.push({ cls: "hard", dur: g.time, paceKm: g.paceKm }); });
         } else {
           stripSegments.push({ cls: "hard", dur: repTimeSec, paceKm: paceKm });
@@ -605,12 +638,17 @@
       }
       renderStrip(stripEl, null, stripSegments);
 
+      var repLabel = measureBy === "time" ? formatDuration(repTimeSec) : formatDistance(distance);
+      outTheadRow.innerHTML = measureBy === "time"
+        ? "<th>Set</th><th>Reps × Duration</th><th>Pace /km</th><th>Rep time</th><th>Cycle</th><th>Recovery</th><th>Set time</th>"
+        : "<th>Set</th><th>Reps × Dist</th><th>Rep pace /km</th><th>Rep time</th><th>Cycle</th><th>Recovery</th><th>Set time</th>";
+
       var rows = "";
       for (var s = 1; s <= sets; s++) {
         rows +=
           "<tr><td>" + s + "</td>" +
-          "<td>" + reps + " × " + formatDistance(distance) + "</td>" +
-          "<td>" + formatDuration(paceKm) + (repMode === "gear" ? " avg" : "") + "</td>" +
+          "<td>" + reps + " × " + repLabel + "</td>" +
+          "<td>" + formatDuration(paceKm) + (isGearMode ? " avg" : "") + "</td>" +
           "<td>" + formatDuration(repTimeSec) + "</td>" +
           "<td>" + formatDuration(cycleSec) + "</td>" +
           "<td>" + formatDuration(recoverySec) + "</td>" +
@@ -620,7 +658,7 @@
       var totalRecoveryTimeSum = totalRecoveriesCount * recoverySec;
       rows +=
         "<tr><td>Total</td>" +
-        "<td>" + totalReps + " × " + formatDistance(distance) + "</td>" +
+        "<td>" + totalReps + " × " + repLabel + "</td>" +
         "<td>—</td>" +
         "<td>" + formatDuration(totalRepTimeSum) + "</td>" +
         "<td>—</td>" +
@@ -628,71 +666,76 @@
         "<td>" + formatDuration(totalSessionTime, totalSessionTime >= 3600) + "</td></tr>";
       outTableBody.innerHTML = rows;
 
-      groupSummary.textContent =
-        "— " + reps + " × " + formatDistance(distance) +
-        (recMode === "cycle" ? ", " + formatDuration(cycleSec) + " cycle" : ", " + formatDuration(recoverySec) + " rest");
-
-      var groupRows = "";
-      if (repMode === "single") {
-        groupTheadRow.innerHTML = "<th>Pace /km</th><th>Rep time</th><th>Recovery</th><th>Cycle</th>";
-        PACE_TIERS.forEach(function (offset) {
-          var tierPaceKm = paceKm + offset;
-          if (tierPaceKm <= 0) return;
-          var tierRepTime = tierPaceKm * (distance / 1000);
-          var tierRecovery, tierCycle, tierValid;
-          if (recMode === "cycle") {
-            tierRecovery = cycleSec - tierRepTime;
-            tierCycle = cycleSec;
-            tierValid = tierRecovery >= 0;
-          } else {
-            tierRecovery = recoverySec;
-            tierCycle = tierRepTime + tierRecovery;
-            tierValid = true;
-          }
-          var rowClass = !tierValid ? "tier-invalid" : "";
-          groupRows +=
-            '<tr class="' + rowClass + '"><td>' + formatDuration(tierPaceKm) + "</td>" +
-            "<td>" + formatDuration(tierRepTime) + "</td>" +
-            "<td>" + (tierValid ? formatDuration(tierRecovery) : "cycle too short") + "</td>" +
-            "<td>" + formatDuration(tierCycle) + "</td></tr>";
-        });
+      if (measureBy === "time") {
+        groupSummary.textContent = "";
+        groupTableBody.innerHTML = "";
       } else {
-        var headHtml = "<th>Pace band</th>";
-        gearList.forEach(function (g, i) { headHtml += "<th>Gear " + (i + 1) + "</th>"; });
-        headHtml += "<th>Recovery</th><th>Cycle</th>";
-        groupTheadRow.innerHTML = headHtml;
+        groupSummary.textContent =
+          "— " + reps + " × " + repLabel +
+          (recMode === "cycle" ? ", " + formatDuration(cycleSec) + " cycle" : ", " + formatDuration(recoverySec) + " rest");
 
-        PACE_TIERS.forEach(function (offset) {
-          var tierOk = gearList.every(function (g) { return g.paceKm + offset > 0; });
-          if (!tierOk) return;
-          var tierRepTime = 0;
-          var cellsHtml = "";
-          gearList.forEach(function (g) {
-            var tierPaceKm = g.paceKm + offset;
-            var tierTime = tierPaceKm * (g.dist / 1000);
-            tierRepTime += tierTime;
-            cellsHtml += "<td>" + formatDuration(tierTime) + "</td>";
+        var groupRows = "";
+        if (!isGearMode) {
+          groupTheadRow.innerHTML = "<th>Pace /km</th><th>Rep time</th><th>Recovery</th><th>Cycle</th>";
+          PACE_TIERS.forEach(function (offset) {
+            var tierPaceKm = paceKm + offset;
+            if (tierPaceKm <= 0) return;
+            var tierRepTime = tierPaceKm * (distance / 1000);
+            var tierRecovery, tierCycle, tierValid;
+            if (recMode === "cycle") {
+              tierRecovery = cycleSec - tierRepTime;
+              tierCycle = cycleSec;
+              tierValid = tierRecovery >= 0;
+            } else {
+              tierRecovery = recoverySec;
+              tierCycle = tierRepTime + tierRecovery;
+              tierValid = true;
+            }
+            var rowClass = !tierValid ? "tier-invalid" : "";
+            groupRows +=
+              '<tr class="' + rowClass + '"><td>' + formatDuration(tierPaceKm) + "</td>" +
+              "<td>" + formatDuration(tierRepTime) + "</td>" +
+              "<td>" + (tierValid ? formatDuration(tierRecovery) : "cycle too short") + "</td>" +
+              "<td>" + formatDuration(tierCycle) + "</td></tr>";
           });
-          var tierRecovery, tierCycle, tierValid;
-          if (recMode === "cycle") {
-            tierRecovery = cycleSec - tierRepTime;
-            tierCycle = cycleSec;
-            tierValid = tierRecovery >= 0;
-          } else {
-            tierRecovery = recoverySec;
-            tierCycle = tierRepTime + tierRecovery;
-            tierValid = true;
-          }
-          var label = (offset > 0 ? "+" : "") + offset + "s/km";
-          var rowClass = !tierValid ? "tier-invalid" : "";
-          groupRows +=
-            '<tr class="' + rowClass + '"><td>' + label + "</td>" +
-            cellsHtml +
-            "<td>" + (tierValid ? formatDuration(tierRecovery) : "cycle too short") + "</td>" +
-            "<td>" + formatDuration(tierCycle) + "</td></tr>";
-        });
+        } else {
+          var headHtml = "<th>Pace band</th>";
+          gearList.forEach(function (g, i) { headHtml += "<th>Gear " + (i + 1) + "</th>"; });
+          headHtml += "<th>Recovery</th><th>Cycle</th>";
+          groupTheadRow.innerHTML = headHtml;
+
+          PACE_TIERS.forEach(function (offset) {
+            var tierOk = gearList.every(function (g) { return g.paceKm + offset > 0; });
+            if (!tierOk) return;
+            var tierRepTime = 0;
+            var cellsHtml = "";
+            gearList.forEach(function (g) {
+              var tierPaceKm = g.paceKm + offset;
+              var tierTime = tierPaceKm * (g.dist / 1000);
+              tierRepTime += tierTime;
+              cellsHtml += "<td>" + formatDuration(tierTime) + "</td>";
+            });
+            var tierRecovery, tierCycle, tierValid;
+            if (recMode === "cycle") {
+              tierRecovery = cycleSec - tierRepTime;
+              tierCycle = cycleSec;
+              tierValid = tierRecovery >= 0;
+            } else {
+              tierRecovery = recoverySec;
+              tierCycle = tierRepTime + tierRecovery;
+              tierValid = true;
+            }
+            var label = (offset > 0 ? "+" : "") + offset + "s/km";
+            var rowClass = !tierValid ? "tier-invalid" : "";
+            groupRows +=
+              '<tr class="' + rowClass + '"><td>' + label + "</td>" +
+              cellsHtml +
+              "<td>" + (tierValid ? formatDuration(tierRecovery) : "cycle too short") + "</td>" +
+              "<td>" + formatDuration(tierCycle) + "</td></tr>";
+          });
+        }
+        groupTableBody.innerHTML = groupRows;
       }
-      groupTableBody.innerHTML = groupRows;
 
       var recoveryTarget = recoveryField.secPerKm ? garminPaceRange(recoveryField.secPerKm) : null;
       var recoveryDetail =
@@ -702,7 +745,9 @@
           : garminDetail("Time", formatDuration(recoverySec), recoveryTarget);
 
       var intervalSteps;
-      if (repMode === "single") {
+      if (measureBy === "time") {
+        intervalSteps = [{ label: "Hill", detail: garminDetail("Time", formatDuration(repTimeSec), garminPaceRange(paceKm)) }];
+      } else if (!isGearMode) {
         intervalSteps = [{ label: "Interval", detail: garminDetail("Distance", formatDistance(distance), garminPaceRange(paceKm)) }];
       } else {
         intervalSteps = gearList.map(function (g, i) {
@@ -724,8 +769,16 @@
       recalc();
       saveState();
     });
-    [repsInput, setsInput, repPaceInput, cycleInput, recoveryFixedInput, setRestInput, distanceCustom].forEach(function (el) {
+    [repsInput, setsInput, repPaceInput, cycleInput, recoveryFixedInput, setRestInput, distanceCustom, timeDurInput, timePaceInput].forEach(function (el) {
       el.addEventListener("input", function () {
+        recalc();
+        saveState();
+      });
+    });
+    measureByBtns.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        measureBy = btn.dataset.measureby;
+        updateMeasureByUI();
         recalc();
         saveState();
       });
@@ -773,6 +826,7 @@
 
     updateDistanceUI();
     updateRepModeUI();
+    updateMeasureByUI();
     updateRecModeUI();
     recalc();
   })();

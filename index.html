@@ -47,7 +47,7 @@
 
     <!-- ============ INTERVALS & RECOVERY ============ -->
     <section class="panel" id="panel-intervals" data-panel="intervals" role="tabpanel" aria-labelledby="tab-btn-intervals">
-      <p class="panel-intro">Set your rep distance and target pace, then describe recovery the way your session actually runs it &mdash; a fixed <strong>cycle</strong> (rep start to rep start), or just a set amount of standing, walking or jogging rest. Built for sessions like 8&times;400m off a 2:30 cycle, or 90 seconds standing between reps.</p>
+      <p class="panel-intro">Set your rep distance and target pace, then describe recovery the way your session actually runs it &mdash; a fixed <strong>cycle</strong> (rep start to rep start), or just a set amount of standing, walking or jogging rest. Built for sessions like 8&times;400m off a 2:30 cycle, or 90 seconds standing between reps. Reps can also be measured by time instead of distance &mdash; handy for hills or anything where pace isn't really the point, like 10&times;90s hard with a jog back down to start.</p>
 
       <div class="tool-grid">
         <form class="card" id="iv-form">
@@ -66,58 +66,85 @@
             </div>
 
             <div class="field">
-              <label>Each rep is</label>
+              <label>Rep is measured by</label>
               <div class="mode-switch">
-                <button type="button" data-repmode="single" aria-pressed="true">One pace</button>
-                <button type="button" data-repmode="gear" aria-pressed="false">Gear shift</button>
+                <button type="button" data-measureby="distance" aria-pressed="true">Distance</button>
+                <button type="button" data-measureby="time" aria-pressed="false">Time</button>
               </div>
             </div>
 
-            <div id="iv-single-wrap">
-              <div class="field-group">
-                <div class="field-row">
-                  <div class="field">
-                    <label for="iv-distance">Rep distance</label>
-                    <select id="iv-distance">
-                      <option value="200">200 m</option>
-                      <option value="300">300 m</option>
-                      <option value="400" selected>400 m</option>
-                      <option value="600">600 m</option>
-                      <option value="800">800 m</option>
-                      <option value="1000">1000 m</option>
-                      <option value="1200">1200 m</option>
-                      <option value="1600">1600 m</option>
-                      <option value="custom">Custom&hellip;</option>
-                    </select>
+            <div id="iv-distance-mode-wrap">
+              <div class="field">
+                <label>Each rep is</label>
+                <div class="mode-switch">
+                  <button type="button" data-repmode="single" aria-pressed="true">One pace</button>
+                  <button type="button" data-repmode="gear" aria-pressed="false">Gear shift</button>
+                </div>
+              </div>
+
+              <div id="iv-single-wrap">
+                <div class="field-group">
+                  <div class="field-row">
+                    <div class="field">
+                      <label for="iv-distance">Rep distance</label>
+                      <select id="iv-distance">
+                        <option value="200">200 m</option>
+                        <option value="300">300 m</option>
+                        <option value="400" selected>400 m</option>
+                        <option value="600">600 m</option>
+                        <option value="800">800 m</option>
+                        <option value="1000">1000 m</option>
+                        <option value="1200">1200 m</option>
+                        <option value="1600">1600 m</option>
+                        <option value="custom">Custom&hellip;</option>
+                      </select>
+                    </div>
+                    <div class="field" id="iv-distance-custom-wrap" hidden>
+                      <label for="iv-distance-custom">Metres</label>
+                      <input type="number" id="iv-distance-custom" min="1" step="1" value="500" inputmode="numeric" />
+                    </div>
                   </div>
-                  <div class="field" id="iv-distance-custom-wrap" hidden>
-                    <label for="iv-distance-custom">Metres</label>
-                    <input type="number" id="iv-distance-custom" min="1" step="1" value="500" inputmode="numeric" />
+
+                  <div class="field">
+                    <label for="iv-reppace">Target rep pace</label>
+                    <div class="pace-field">
+                      <input type="text" id="iv-reppace" value="3:45" inputmode="numeric" placeholder="m:ss" />
+                      <span class="unit-label">/ KM</span>
+                    </div>
+                    <div class="equiv-line" id="iv-reppace-equiv" aria-live="polite"></div>
                   </div>
                 </div>
+              </div>
 
+              <div id="iv-gear-wrap" hidden>
+                <div class="field-group">
+                  <div class="field">
+                    <label>Gears <span class="hint">(distance and pace, in order)</span></label>
+                    <div class="gear-rows" id="iv-gear-rows"></div>
+                    <div class="preset-row">
+                      <button type="button" class="chip-btn" id="iv-gear-add">+ Add gear</button>
+                    </div>
+                    <input type="hidden" id="iv-gears-data" value="" />
+                  </div>
+                  <div class="equiv-line" id="iv-gear-equiv" aria-live="polite"></div>
+                </div>
+              </div>
+            </div>
+
+            <div id="iv-time-wrap" hidden>
+              <div class="field-group">
                 <div class="field">
-                  <label for="iv-reppace">Target rep pace</label>
+                  <label for="iv-time-dur">Rep duration</label>
+                  <input type="text" id="iv-time-dur" value="1:30" inputmode="numeric" placeholder="m:ss" />
+                </div>
+                <div class="field">
+                  <label for="iv-time-pace">Target pace <span class="hint">(optional &mdash; estimates distance covered)</span></label>
                   <div class="pace-field">
-                    <input type="text" id="iv-reppace" value="3:45" inputmode="numeric" placeholder="m:ss" />
+                    <input type="text" id="iv-time-pace" value="" inputmode="numeric" placeholder="m:ss" />
                     <span class="unit-label">/ KM</span>
                   </div>
-                  <div class="equiv-line" id="iv-reppace-equiv" aria-live="polite"></div>
+                  <div class="equiv-line" id="iv-time-equiv" aria-live="polite"></div>
                 </div>
-              </div>
-            </div>
-
-            <div id="iv-gear-wrap" hidden>
-              <div class="field-group">
-                <div class="field">
-                  <label>Gears <span class="hint">(distance and pace, in order)</span></label>
-                  <div class="gear-rows" id="iv-gear-rows"></div>
-                  <div class="preset-row">
-                    <button type="button" class="chip-btn" id="iv-gear-add">+ Add gear</button>
-                  </div>
-                  <input type="hidden" id="iv-gears-data" value="" />
-                </div>
-                <div class="equiv-line" id="iv-gear-equiv" aria-live="polite"></div>
               </div>
             </div>
 
@@ -197,7 +224,7 @@
           <div class="table-wrap">
             <table class="data" id="iv-out-table">
               <thead id="iv-out-thead">
-                <tr><th>Set</th><th>Reps &times; Dist</th><th>Rep pace /km</th><th>Rep time</th><th>Cycle</th><th>Recovery</th><th>Set time</th></tr>
+                <tr id="iv-out-thead-row"><th>Set</th><th>Reps &times; Dist</th><th>Rep pace /km</th><th>Rep time</th><th>Cycle</th><th>Recovery</th><th>Set time</th></tr>
               </thead>
               <tbody></tbody>
             </table>

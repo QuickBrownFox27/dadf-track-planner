@@ -890,19 +890,19 @@ table.data:not(.group-table) tr:last-child td {
    shade-0 is the slowest gear present, shade-3 the fastest (same gold as
    the default, unshaded .hard above). */
 .strip-seg.hard.shade-0 {
-  background: hsl(46, 40%, 34%);
+  background: hsl(46, 45%, 40%);
 }
 
 .strip-seg.hard.shade-1 {
-  background: hsl(46, 60%, 42%);
+  background: hsl(40, 65%, 46%);
 }
 
 .strip-seg.hard.shade-2 {
-  background: hsl(46, 78%, 48%);
+  background: hsl(33, 80%, 50%);
 }
 
 .strip-seg.hard.shade-3 {
-  background: var(--scoreboard-accent);
+  background: hsl(26, 90%, 54%);
 }
 
 .strip-seg.float {

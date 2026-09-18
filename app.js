@@ -539,7 +539,7 @@
       if (recMode === "cycle") {
         cycleSec = parseTime(cycleInput.value);
         markValid(cycleInput, cycleSec != null && cycleSec > 0);
-      } else {
+      } else if (recMode === "fixed") {
         recoveryFixedSec = parseTime(recoveryFixedInput.value);
         markValid(recoveryFixedInput, recoveryFixedSec != null && recoveryFixedSec >= 0);
       }
@@ -559,7 +559,7 @@
         measureBy === "time" ? repTimeSec != null && repTimeSec > 0 :
         !isGearMode ? (distance > 0 && repTimeSec != null) :
         (gearsValid && distance > 0 && gearRows.length > 0);
-      var recModeValueOk = recMode === "cycle" ? cycleSec != null : recoveryFixedSec != null;
+      var recModeValueOk = recMode === "cycle" ? cycleSec != null : recMode === "fixed" ? recoveryFixedSec != null : true;
 
       if (!repDataOk || !(reps >= 1) || !(sets >= 1) || !recModeValueOk || setRestSec == null) {
         outRecovery.textContent = "—";
@@ -594,11 +594,11 @@
         return;
       }
 
-      var recoverySec = recMode === "cycle" ? cycleSec - repTimeSec : recoveryFixedSec;
+      var recoverySec = recMode === "cycle" ? cycleSec - repTimeSec : recMode === "fixed" ? recoveryFixedSec : null;
       if (recMode === "fixed") cycleSec = repTimeSec + recoverySec;
-      var recoveryJogDist = recoveryField.secPerKm ? (recoverySec / recoveryField.secPerKm) * 1000 : null;
+      var recoveryJogDist = recoverySec != null && recoveryField.secPerKm ? (recoverySec / recoveryField.secPerKm) * 1000 : null;
 
-      outRecovery.textContent = formatDuration(recoverySec);
+      outRecovery.textContent = recMode === "open" ? "Open" : formatDuration(recoverySec);
       outRecoveryDist.textContent = recoveryJogDist != null ? "≈ " + formatDistance(recoveryJogDist) + " jog" : "";
 
       var totalReps = reps * sets;
@@ -607,12 +607,12 @@
       var totalRecoveriesCount = recoveriesPerSet * sets;
       var totalRecoveryDist = recoveryJogDist != null ? totalRecoveriesCount * recoveryJogDist : 0;
 
-      var setTime = reps * repTimeSec + recoveriesPerSet * recoverySec;
+      var setTime = reps * repTimeSec + recoveriesPerSet * (recoverySec != null ? recoverySec : 0);
       var totalSessionTime = sets * setTime + Math.max(0, sets - 1) * setRestSec;
 
       outTotalReps.textContent = String(totalReps);
       outTotalDist.textContent = totalRepDist != null ? formatDistance(totalRepDist + totalRecoveryDist) : "—";
-      outTotalTime.textContent = formatDuration(totalSessionTime, totalSessionTime >= 3600);
+      outTotalTime.textContent = formatDuration(totalSessionTime, totalSessionTime >= 3600) + (recMode === "open" ? " + open recovery" : "");
 
       if (isGearMode) {
         gearBreakdownWrap.hidden = false;
@@ -650,20 +650,20 @@
           "<td>" + reps + " × " + repLabel + "</td>" +
           "<td>" + formatDuration(paceKm) + (isGearMode ? " avg" : "") + "</td>" +
           "<td>" + formatDuration(repTimeSec) + "</td>" +
-          "<td>" + formatDuration(cycleSec) + "</td>" +
-          "<td>" + formatDuration(recoverySec) + "</td>" +
+          "<td>" + (recMode === "open" ? "—" : formatDuration(cycleSec)) + "</td>" +
+          "<td>" + (recMode === "open" ? "Open" : formatDuration(recoverySec)) + "</td>" +
           "<td>" + formatDuration(setTime) + "</td></tr>";
       }
       var totalRepTimeSum = totalReps * repTimeSec;
-      var totalRecoveryTimeSum = totalRecoveriesCount * recoverySec;
+      var totalRecoveryTimeSum = recoverySec != null ? totalRecoveriesCount * recoverySec : null;
       rows +=
         "<tr><td>Total</td>" +
         "<td>" + totalReps + " × " + repLabel + "</td>" +
         "<td>—</td>" +
         "<td>" + formatDuration(totalRepTimeSum) + "</td>" +
         "<td>—</td>" +
-        "<td>" + formatDuration(totalRecoveryTimeSum) + "</td>" +
-        "<td>" + formatDuration(totalSessionTime, totalSessionTime >= 3600) + "</td></tr>";
+        "<td>" + (recMode === "open" ? "Open" : formatDuration(totalRecoveryTimeSum)) + "</td>" +
+        "<td>" + formatDuration(totalSessionTime, totalSessionTime >= 3600) + (recMode === "open" ? " + open" : "") + "</td></tr>";
       outTableBody.innerHTML = rows;
 
       if (measureBy === "time") {
@@ -672,7 +672,9 @@
       } else {
         groupSummary.textContent =
           "— " + reps + " × " + repLabel +
-          (recMode === "cycle" ? ", " + formatDuration(cycleSec) + " cycle" : ", " + formatDuration(recoverySec) + " rest");
+          (recMode === "cycle" ? ", " + formatDuration(cycleSec) + " cycle" :
+           recMode === "fixed" ? ", " + formatDuration(recoverySec) + " rest" :
+           ", open recovery");
 
         var groupRows = "";
         if (!isGearMode) {
@@ -686,17 +688,21 @@
               tierRecovery = cycleSec - tierRepTime;
               tierCycle = cycleSec;
               tierValid = tierRecovery >= 0;
-            } else {
+            } else if (recMode === "fixed") {
               tierRecovery = recoverySec;
               tierCycle = tierRepTime + tierRecovery;
+              tierValid = true;
+            } else {
+              tierRecovery = null;
+              tierCycle = null;
               tierValid = true;
             }
             var rowClass = !tierValid ? "tier-invalid" : "";
             groupRows +=
               '<tr class="' + rowClass + '"><td>' + formatDuration(tierPaceKm) + "</td>" +
               "<td>" + formatDuration(tierRepTime) + "</td>" +
-              "<td>" + (tierValid ? formatDuration(tierRecovery) : "cycle too short") + "</td>" +
-              "<td>" + formatDuration(tierCycle) + "</td></tr>";
+              "<td>" + (!tierValid ? "cycle too short" : recMode === "open" ? "Open" : formatDuration(tierRecovery)) + "</td>" +
+              "<td>" + (recMode === "open" ? "—" : formatDuration(tierCycle)) + "</td></tr>";
           });
         } else {
           var headHtml = "<th>Pace band</th>";
@@ -720,9 +726,13 @@
               tierRecovery = cycleSec - tierRepTime;
               tierCycle = cycleSec;
               tierValid = tierRecovery >= 0;
-            } else {
+            } else if (recMode === "fixed") {
               tierRecovery = recoverySec;
               tierCycle = tierRepTime + tierRecovery;
+              tierValid = true;
+            } else {
+              tierRecovery = null;
+              tierCycle = null;
               tierValid = true;
             }
             var label = (offset > 0 ? "+" : "") + offset + "s/km";
@@ -730,8 +740,8 @@
             groupRows +=
               '<tr class="' + rowClass + '"><td>' + label + "</td>" +
               cellsHtml +
-              "<td>" + (tierValid ? formatDuration(tierRecovery) : "cycle too short") + "</td>" +
-              "<td>" + formatDuration(tierCycle) + "</td></tr>";
+              "<td>" + (!tierValid ? "cycle too short" : recMode === "open" ? "Open" : formatDuration(tierRecovery)) + "</td>" +
+              "<td>" + (recMode === "open" ? "—" : formatDuration(tierCycle)) + "</td></tr>";
           });
         }
         groupTableBody.innerHTML = groupRows;
@@ -742,6 +752,8 @@
         recMode === "cycle"
           ? "Lap Button Press — rest until the caller says go (≈ " + formatDuration(recoverySec) + ")" +
             (recoveryTarget ? " · Target Pace " + recoveryTarget : " · Open (no target)")
+          : recMode === "open"
+          ? "Duration: Open — walk or jog back until ready" + (recoveryTarget ? " · Target Pace " + recoveryTarget : "")
           : garminDetail("Time", formatDuration(recoverySec), recoveryTarget);
 
       var intervalSteps;

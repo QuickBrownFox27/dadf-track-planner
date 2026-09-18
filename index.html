@@ -507,7 +507,7 @@
 
     <!-- ============ LADDER ============ -->
     <section class="panel" id="panel-ladder" data-panel="ladder" role="tabpanel" aria-labelledby="tab-btn-ladder" hidden>
-      <p class="panel-intro">Build a ladder from any run of distances, set a pace for each rung &mdash; quicker on the way down, however your session calls it &mdash; choose how recovery scales (including its own cycle time per rung), and repeat the whole sequence as many laps as you like.</p>
+      <p class="panel-intro">Build a ladder from any run of distances (or durations), set a pace for each rung &mdash; quicker on the way down, however your session calls it &mdash; choose how recovery scales (including its own cycle time per rung), and repeat the whole sequence as many laps as you like.</p>
 
       <div class="tool-grid">
         <form class="card" id="lad-form">
@@ -515,21 +515,40 @@
           <div class="field-group">
 
             <div class="field">
-              <label>Presets</label>
-              <div class="preset-row">
-                <button type="button" class="chip-btn" data-preset="200,400,600,400,200">Short</button>
-                <button type="button" class="chip-btn" aria-pressed="true" data-preset="400,800,1200,1600,1200,800,400">Classic</button>
-                <button type="button" class="chip-btn" data-preset="400,800,1200,1600,2000,1600,1200,800,400">Long</button>
+              <label>Rung is measured by</label>
+              <div class="mode-switch">
+                <button type="button" data-measureby="distance" aria-pressed="true">Distance</button>
+                <button type="button" data-measureby="time" aria-pressed="false">Time</button>
+              </div>
+            </div>
+
+            <div id="lad-distance-mode-wrap">
+              <div class="field-group">
+                <div class="field">
+                  <label>Presets</label>
+                  <div class="preset-row">
+                    <button type="button" class="chip-btn" data-preset="200,400,600,400,200">Short</button>
+                    <button type="button" class="chip-btn" aria-pressed="true" data-preset="400,800,1200,1600,1200,800,400">Classic</button>
+                    <button type="button" class="chip-btn" data-preset="400,800,1200,1600,2000,1600,1200,800,400">Long</button>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="lad-distances">Rung distances <span class="hint">(metres, comma-separated)</span></label>
+                  <input type="text" id="lad-distances" value="400,800,1200,1600,1200,800,400" />
+                </div>
+              </div>
+            </div>
+
+            <div id="lad-time-wrap" hidden>
+              <div class="field">
+                <label for="lad-durations">Rung durations <span class="hint">(m:ss, comma-separated)</span></label>
+                <input type="text" id="lad-durations" value="5:00,4:00,3:00,2:00,1:00,5:00" />
               </div>
             </div>
 
             <div class="field">
-              <label for="lad-distances">Rung distances <span class="hint">(metres, comma-separated)</span></label>
-              <input type="text" id="lad-distances" value="400,800,1200,1600,1200,800,400" />
-            </div>
-
-            <div class="field">
-              <label>Pace per rung</label>
+              <label id="lad-pace-label">Pace per rung</label>
               <div class="phase-pace-rows" id="lad-pace-rows"></div>
               <input type="hidden" id="lad-paces-data" value="" />
             </div>

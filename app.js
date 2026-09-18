@@ -211,7 +211,7 @@
     "iv-time-dur", "iv-time-pace",
     "mf-hardpace-90", "mf-hardpace-60", "mf-hardpace-30", "mf-hardpace-15", "mf-floatpace", "mf-sets", "mf-setrest",
     "df-harddist", "df-floatdist", "df-harddur", "df-floatdur", "df-reps", "df-hardpace", "df-floatpace",
-    "lad-distances", "lad-paces-data", "lad-recmode", "lad-ratio", "lad-fixed", "lad-cycles-data", "lad-repeats",
+    "lad-distances", "lad-durations", "lad-paces-data", "lad-recmode", "lad-ratio", "lad-fixed", "lad-cycles-data", "lad-repeats",
     "goal-5k", "goal-10k", "goal-half", "goal-full",
     "pc-distance", "pc-distance-custom", "pc-time", "pc-pace",
     "rp-distance", "rp-distance-custom", "rp-time",
@@ -1262,7 +1262,12 @@
 
   (function ladderTool() {
     var presetBtns = Array.prototype.slice.call(document.querySelectorAll("#panel-ladder .chip-btn[data-preset]"));
+    var measureByBtns = Array.prototype.slice.call(document.querySelectorAll('#lad-form .mode-switch button[data-measureby]'));
+    var distanceModeWrap = document.getElementById("lad-distance-mode-wrap");
+    var timeWrap = document.getElementById("lad-time-wrap");
     var distancesInput = document.getElementById("lad-distances");
+    var durationsInput = document.getElementById("lad-durations");
+    var paceLabel = document.getElementById("lad-pace-label");
     var paceRowsContainer = document.getElementById("lad-pace-rows");
     var pacesDataInput = document.getElementById("lad-paces-data");
     var repeatsInput = document.getElementById("lad-repeats");
@@ -1286,6 +1291,7 @@
     var stripEl = document.getElementById("lad-strip");
     var stripPhasesEl = document.getElementById("lad-strip-phases");
 
+    var measureBy = "distance";
     var paceRows = [];
 
     function makePaceRow(seedValue) {
@@ -1325,8 +1331,8 @@
     }
 
     function updatePaceRowTags(raw) {
-      raw.forEach(function (dist, i) {
-        if (paceRows[i]) paceRows[i].tagEl.textContent = (i + 1) + " · " + formatDistance(dist);
+      raw.forEach(function (v, i) {
+        if (paceRows[i]) paceRows[i].tagEl.textContent = (i + 1) + " · " + (measureBy === "time" ? formatDuration(v) : formatDistance(v));
       });
     }
 
@@ -1364,8 +1370,8 @@
     }
 
     function updateCycleRowTags(raw) {
-      raw.forEach(function (dist, i) {
-        if (cycleRows[i]) cycleRows[i].tagEl.textContent = (i + 1) + " · " + formatDistance(dist);
+      raw.forEach(function (v, i) {
+        if (cycleRows[i]) cycleRows[i].tagEl.textContent = (i + 1) + " · " + (measureBy === "time" ? formatDuration(v) : formatDistance(v));
       });
     }
 
@@ -1373,6 +1379,15 @@
       var current = distancesInput.value.replace(/\s+/g, "");
       presetBtns.forEach(function (btn) {
         btn.setAttribute("aria-pressed", btn.dataset.preset === current ? "true" : "false");
+      });
+    }
+
+    function updateMeasureByUI() {
+      distanceModeWrap.hidden = measureBy !== "distance";
+      timeWrap.hidden = measureBy !== "time";
+      paceLabel.textContent = measureBy === "time" ? "Pace per rung (optional — estimates distance covered)" : "Pace per rung";
+      measureByBtns.forEach(function (b) {
+        b.setAttribute("aria-pressed", b.dataset.measureby === measureBy ? "true" : "false");
       });
     }
 
@@ -1385,11 +1400,20 @@
 
     function recalc() {
       setError("lad-error", "");
-      var raw = distancesInput.value
-        .split(",")
-        .map(function (s) { return parseFloat(s.trim()); })
-        .filter(function (n) { return !isNaN(n) && n > 0; });
-      markValid(distancesInput, raw.length > 0);
+      var raw;
+      if (measureBy === "time") {
+        raw = durationsInput.value
+          .split(",")
+          .map(function (s) { return parseTime(s.trim()); })
+          .filter(function (t) { return t != null && t > 0; });
+        markValid(durationsInput, raw.length > 0);
+      } else {
+        raw = distancesInput.value
+          .split(",")
+          .map(function (s) { return parseFloat(s.trim()); })
+          .filter(function (n) { return !isNaN(n) && n > 0; });
+        markValid(distancesInput, raw.length > 0);
+      }
 
       ensurePaceRowCount(raw.length);
       updatePaceRowTags(raw);
@@ -1401,7 +1425,7 @@
 
       var paceOk = true;
       paceRows.forEach(function (r) {
-        if (!r.field.sync(false)) paceOk = false;
+        if (!r.field.sync(measureBy === "time")) paceOk = false;
       });
 
       var recMode = recModeSel.value;
@@ -1425,8 +1449,8 @@
       var repeats = parseInt(repeatsInput.value, 10);
       markValid(repeatsInput, repeats >= 1);
 
-      if (raw.length === 0) setError("lad-error", "Enter at least one rung distance, e.g. 400,800,1200.");
-      else if (!paceOk) setError("lad-error", "Enter a valid pace for every rung.");
+      if (raw.length === 0) setError("lad-error", measureBy === "time" ? "Enter at least one rung duration, e.g. 5:00,4:00,3:00." : "Enter at least one rung distance, e.g. 400,800,1200.");
+      else if (!paceOk) setError("lad-error", measureBy === "time" ? "Enter a valid pace, or leave it blank." : "Enter a valid pace for every rung.");
       else if (recMode === "ratio" && (ratio == null || isNaN(ratio) || ratio < 0)) setError("lad-error", "Recovery ratio must be zero or greater.");
       else if (recMode === "fixed" && fixedRec == null) setError("lad-error", "Enter a valid fixed recovery time.");
       else if (recMode === "cycle" && !cycleOk) setError("lad-error", "Enter a valid cycle time for every rung.");
@@ -1450,18 +1474,26 @@
         return;
       }
 
+      /* rungs[i]: unified per-rung {dist, paceKm, dur} regardless of measureBy.
+         In time mode dist/paceKm may be null (pace is optional there). */
+      var rungs = raw.map(function (v, i) {
+        var paceKm = paceRows[i].field.secPerKm;
+        if (measureBy === "time") {
+          return { dist: paceKm != null ? (v / paceKm) * 1000 : null, paceKm: paceKm, dur: v };
+        }
+        return { dist: v, paceKm: paceKm, dur: paceKm * (v / 1000) };
+      });
+
       if (recMode === "cycle") {
         var badIdx = -1;
-        for (var ci = 0; ci < raw.length; ci++) {
-          var badRepTime = paceRows[ci].field.secPerKm * (raw[ci] / 1000);
-          if (cycleSecs[ci] <= badRepTime) { badIdx = ci; break; }
+        for (var ci = 0; ci < rungs.length; ci++) {
+          if (cycleSecs[ci] <= rungs[ci].dur) { badIdx = ci; break; }
         }
         if (badIdx !== -1) {
-          var badRepTime2 = paceRows[badIdx].field.secPerKm * (raw[badIdx] / 1000);
           setError(
             "lad-error",
             "Rung " + (badIdx + 1) + "'s cycle time (" + formatDuration(cycleSecs[badIdx]) +
-              ") must be longer than its rep time (" + formatDuration(badRepTime2) + ")."
+              ") must be longer than its rep time (" + formatDuration(rungs[badIdx].dur) + ")."
           );
           outTotalDist.textContent = "—";
           outRungs.textContent = "—";
@@ -1482,39 +1514,39 @@
         return cycleSecs[baseIdx] - repTime;
       }
 
-      var seqLen = raw.length * repeats;
-      var cumDist = 0, cumTime = 0;
+      var seqLen = rungs.length * repeats;
+      var cumDist = 0, cumDistKnown = true, cumTime = 0;
       var rows = "";
       var stripSegments = [];
       var stripGroups = [];
       for (var i = 0; i < seqLen; i++) {
-        var baseIdx = i % raw.length;
-        var dist = raw[baseIdx];
-        var paceKm = paceRows[baseIdx].field.secPerKm;
-        var repTime = paceKm * (dist / 1000);
+        var baseIdx = i % rungs.length;
+        var r = rungs[baseIdx];
+        var repTime = r.dur;
         var recovery = recoveryForBase(baseIdx, repTime);
         var isLast = i === seqLen - 1;
-        cumDist += dist;
+        if (r.dist == null) cumDistKnown = false;
+        else if (cumDistKnown) cumDist += r.dist;
         cumTime += repTime + (isLast ? 0 : recovery);
         rows +=
           "<tr><td>" + (i + 1) + "</td>" +
-          "<td>" + formatDistance(dist) + "</td>" +
-          "<td>" + formatDuration(paceKm) + "</td>" +
+          "<td>" + formatDistance(r.dist) + "</td>" +
+          "<td>" + formatDuration(r.paceKm) + "</td>" +
           "<td>" + formatDuration(repTime) + "</td>" +
           "<td>" + (isLast ? "—" : formatDuration(recovery)) + "</td>" +
-          "<td>" + formatDistance(cumDist) + "</td>" +
+          "<td>" + (cumDistKnown ? formatDistance(cumDist) : "—") + "</td>" +
           "<td>" + formatDuration(cumTime, cumTime >= 3600) + "</td></tr>";
-        stripSegments.push({ cls: "hard", dur: repTime, paceKm: paceKm });
+        stripSegments.push({ cls: "hard", dur: repTime, paceKm: r.paceKm });
         var groupDur = repTime;
         if (!isLast) {
           stripSegments.push({ cls: "float", dur: recovery });
           groupDur += recovery;
         }
-        stripGroups.push({ label: formatDistance(dist), dur: groupDur });
+        stripGroups.push({ label: measureBy === "time" ? formatDuration(r.dur) : formatDistance(r.dist), dur: groupDur });
       }
       outTableBody.innerHTML = rows;
       renderStrip(stripEl, stripPhasesEl, stripSegments, stripGroups);
-      outTotalDist.textContent = formatDistance(cumDist);
+      outTotalDist.textContent = cumDistKnown ? formatDistance(cumDist) : "—";
       outRungs.textContent = String(seqLen);
       outTotalTime.textContent = formatDuration(cumTime, cumTime >= 3600);
 
@@ -1522,53 +1554,61 @@
         recMode === "fixed" ? formatDuration(fixedRec) + " recovery" :
         recMode === "ratio" ? ratio + "× rep-time recovery" :
         "cycle recovery";
+      var rungLabels = rungs.map(function (r) { return measureBy === "time" ? formatDuration(r.dur) : formatDistance(r.dist); });
       groupSummary.textContent =
-        "— " + raw.map(formatDistance).join(" - ") +
+        "— " + rungLabels.join(" - ") +
         (repeats > 1 ? " × " + repeats : "") +
         ", " + recoveryLabel;
-      var headHtml = "<th>Pace band</th>";
-      raw.forEach(function (dist) { headHtml += "<th>" + formatDistance(dist) + "</th>"; });
-      headHtml += "<th>Total</th>";
-      groupTheadRow.innerHTML = headHtml;
 
-      var groupRows = "";
-      PACE_TIERS.forEach(function (offset) {
-        var tierPaceKm = raw.map(function (dist, i) { return paceRows[i].field.secPerKm + offset; });
-        var tierOk = tierPaceKm.every(function (p) { return p > 0; });
-        if (tierOk && recMode === "cycle") {
-          tierOk = raw.every(function (dist, i) {
-            var tRepTime = tierPaceKm[i] * (dist / 1000);
-            return cycleSecs[i] - tRepTime >= 0;
-          });
-        }
-        if (!tierOk) return;
-        var tCum = 0;
-        var cellsHtml = "";
-        for (var ti = 0; ti < seqLen; ti++) {
-          var tBaseIdx = ti % raw.length;
-          var tDist = raw[tBaseIdx];
-          var tRepTime = tierPaceKm[tBaseIdx] * (tDist / 1000);
-          var tRecovery = recoveryForBase(tBaseIdx, tRepTime);
-          var tIsLast = ti === seqLen - 1;
-          tCum += tRepTime + (tIsLast ? 0 : tRecovery);
-          if (ti < raw.length) cellsHtml += "<td>" + formatDuration(tRepTime) + "</td>";
-        }
-        var label = (offset > 0 ? "+" : "") + offset + "s/km";
-        groupRows +=
-          "<tr><td>" + label + "</td>" +
-          cellsHtml +
-          "<td>" + formatDuration(tCum, tCum >= 3600) + "</td></tr>";
-      });
-      groupTableBody.innerHTML = groupRows;
+      if (measureBy === "time") {
+        groupTheadRow.innerHTML = "";
+        groupTableBody.innerHTML = "";
+      } else {
+        var headHtml = "<th>Pace band</th>";
+        raw.forEach(function (dist) { headHtml += "<th>" + formatDistance(dist) + "</th>"; });
+        headHtml += "<th>Total</th>";
+        groupTheadRow.innerHTML = headHtml;
+
+        var groupRows = "";
+        PACE_TIERS.forEach(function (offset) {
+          var tierPaceKm = raw.map(function (dist, i) { return paceRows[i].field.secPerKm + offset; });
+          var tierOk = tierPaceKm.every(function (p) { return p > 0; });
+          if (tierOk && recMode === "cycle") {
+            tierOk = raw.every(function (dist, i) {
+              var tRepTime = tierPaceKm[i] * (dist / 1000);
+              return cycleSecs[i] - tRepTime >= 0;
+            });
+          }
+          if (!tierOk) return;
+          var tCum = 0;
+          var cellsHtml = "";
+          for (var ti = 0; ti < seqLen; ti++) {
+            var tBaseIdx = ti % raw.length;
+            var tDist = raw[tBaseIdx];
+            var tRepTime = tierPaceKm[tBaseIdx] * (tDist / 1000);
+            var tRecovery = recoveryForBase(tBaseIdx, tRepTime);
+            var tIsLast = ti === seqLen - 1;
+            tCum += tRepTime + (tIsLast ? 0 : tRecovery);
+            if (ti < raw.length) cellsHtml += "<td>" + formatDuration(tRepTime) + "</td>";
+          }
+          var label = (offset > 0 ? "+" : "") + offset + "s/km";
+          groupRows +=
+            "<tr><td>" + label + "</td>" +
+            cellsHtml +
+            "<td>" + formatDuration(tCum, tCum >= 3600) + "</td></tr>";
+        });
+        groupTableBody.innerHTML = groupRows;
+      }
 
       var lapSteps = [];
-      raw.forEach(function (dist, i) {
-        var paceKm = paceRows[i].field.secPerKm;
-        var repTime = paceKm * (dist / 1000);
-        var isLastRungOfLap = i === raw.length - 1;
-        lapSteps.push({ label: "Rung " + (i + 1), detail: garminDetail("Distance", formatDistance(dist), garminPaceRange(paceKm)) });
+      rungs.forEach(function (r, i) {
+        var isLastRungOfLap = i === rungs.length - 1;
+        var stepDetail = measureBy === "time"
+          ? garminDetail("Time", formatDuration(r.dur), garminPaceRange(r.paceKm))
+          : garminDetail("Distance", formatDistance(r.dist), garminPaceRange(r.paceKm));
+        lapSteps.push({ label: "Rung " + (i + 1), detail: stepDetail });
         if (repeats > 1 || !isLastRungOfLap) {
-          var recovery = recoveryForBase(i, repTime);
+          var recovery = recoveryForBase(i, r.dur);
           var recoveryDetail =
             recMode === "cycle"
               ? "Lap Button Press — rest until the caller says go (≈ " + formatDuration(recovery) + ") · Open (no target)"
@@ -1593,6 +1633,15 @@
       recalc();
       saveState();
     });
+    durationsInput.addEventListener("input", function () { recalc(); saveState(); });
+    measureByBtns.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        measureBy = btn.dataset.measureby;
+        updateMeasureByUI();
+        recalc();
+        saveState();
+      });
+    });
     recModeSel.addEventListener("change", function () { updateRecoveryModeUI(); recalc(); saveState(); });
     ratioInput.addEventListener("input", function () { recalc(); saveState(); });
     fixedInput.addEventListener("input", function () { recalc(); saveState(); });
@@ -1610,6 +1659,7 @@
     ensureCycleRowCount(initialRaw.length, savedCycles.length === initialRaw.length ? savedCycles : null);
     updateCycleRowTags(initialRaw);
 
+    updateMeasureByUI();
     updateRecoveryModeUI();
     syncPresetPressed();
     recalc();
